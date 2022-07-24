@@ -3,6 +3,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "cpu.h"
+#include "memory.h"
+
 
 enum {
     NOP,  // Do nothing
@@ -23,22 +26,22 @@ enum {
     MOV   // Move the contents of <src> to <dst>
 };
 
-static uint16_t registers [16];
 // General purpose registers are 4-bit. Special registers are 16-bit
 
-typedef struct machine {
-    uint16_t registers [16];
+void machine_init (machine *m, size_t size) {
+    m = malloc(sizeof machine);
+    m->registers = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    memory_init(m->memory, size);
+}
 
-} machine;
-
-
-int load () {}
+int machine_load () {}
 int store () {}
 
-void instr_decode (machine *p) {}
-void instr_fetch (machine *p) {}
-void instr_execute (machine *p) {}
+void machine_instr_fetch (machine *p) {}
+void machine_instr_decode (machine *p) {}
+void machine_instr_execute (machine *p) {}
 
-int main (int argc, char *argsv[]) {
-    return 0;
+void machine_free (machine *m) {
+    memory_free(m->memory);
+    free(m);
 }
