@@ -50,12 +50,16 @@ typedef enum {
 
 typedef struct machine {
     uint8_t status;
-    uint16_t registers [16];
+    uint8_t registers [8];
     memory *memory;
+    uint8_t flags;
     // ------
     uint8_t *pc;
+    uint8_t *sp;
+    uint8_t *iv;
+    uint8_t *ix;
+    uint8_t *ta;
     uint8_t instr;
-    uint16_t *rgstr;
     Register src;
     Register dst;
     uint16_t src_ext;
@@ -63,6 +67,8 @@ typedef struct machine {
 } machine;
 
 void machine_init (machine **mach, size_t size);
+
+void machine_show (machine *mach);
 
 void machine_start (machine *mach);
 void machine_pause (machine *mach);
