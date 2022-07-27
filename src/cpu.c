@@ -202,8 +202,8 @@ static inline void machine_instr_decode (machine *m) {
 
         case INC:
         case DEC:
-        case ROLC:
-        case RORC:
+        case RLC:
+        case RRC:
         case POP: {
             m->dst = (Register) READ_NEXT(m->pc);
 
@@ -278,8 +278,22 @@ static inline void machine_instr_execute (machine *m) {
             ));
             break;
         }
-        case ROLC:
-        case RORC:
+        case RLC: {
+            uint16_t value = machine_get_value(m, m->dst, m->dst_ext);
+            uint8_t flags = m->flags;
+            m->flags = (value & 0xA000) | (flags & 0xFB);
+            value = (value << 1) | ((flags & 0x4) >> 2);
+            machine_set_value(m, m->dst, m->dst_ext, value);
+            break;
+        }
+        case RRC: {
+            uint16_t value = machine_get_value(m, m->dst, m->dst_ext);
+            uint8_t flags = m->flags;
+            m->flags = (value & 0x1) | (flags & 0xFB);
+            value = (value >> 1) | ((flags & 0x4) << 13);
+            machine_set_value(m, m->dst, m->dst_ext, value);
+            break;
+        }
         case AND: {
             machine_set_value(m, m->dst, m->dst_ext, (
                 machine_get_value(m, m->src, m->src_ext) &
@@ -324,6 +338,14 @@ static inline void machine_instr_execute (machine *m) {
             break;
         }
         case JSR: {
+            if ((m->flags & (1 << (m->dst & 7))) == (((m->dst & 8) >> 3) << (m->dst & 7))) {
+                uint16_t pc = m->pc - m->memory->data;
+                *(m->sp)++ = pc & 0xF;
+                *(m->sp)++ = (pc >> 4) & 0xF;
+                *(m->sp)++ = (pc >> 8) & 0xF;
+                *(m->sp)++ = (pc >> 12) & 0xF;                
+                m->pc = m->memory->data + m->dst_ext;
+            }
             break;
         }
         case MOV: {

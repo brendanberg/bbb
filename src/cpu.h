@@ -35,8 +35,8 @@ typedef enum {
     DEC,  // Decrement contents of register or memory
     ADD,  // Add contents of <src> and <dst> (with carry) and store in <dst>
     SUB,  // Subtract contents of <src> from <dst> (with borrow) and store in <dst>
-    ROLC, // Rotate contents of <dst> left through the carry status bit
-    RORC, // Rotate contents of <dst> right through the carry status bit
+    RLC,  // Rotate contents of <dst> left through the carry status bit
+    RRC,  // Rotate contents of <dst> right through the carry status bit
     AND,  // Logical AND contents of <src> and <dst> and store in <dst>
     OR,   // Logical OR contents of <src> and <dst> and store in <dst>
     XOR,  // Logical XOR contents of <src> and <dst> and store in <dst>
