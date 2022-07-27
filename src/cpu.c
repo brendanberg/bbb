@@ -54,12 +54,10 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
         m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
         m->memory->data[dst_ext] = value;
         break;
-    case REGISTER_MX: {
+    case REGISTER_MX:
         m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
-        uint16_t offset = m->ix - m->memory->data;
-        m->memory->data[offset + dst_ext] = value;
+        m->memory->data[(m->ix - m->memory->data) + dst_ext] = value;
         break;
-    }
     case REGISTER_PC:
         m->pc = (m->memory->data + value);
         break;
@@ -311,8 +309,12 @@ static inline void machine_instr_execute (machine *m) {
                 | (lhs > rhs));
             break;
         }
-        case PSH:
+        case PSH: {
+            *(m->sp)++ = machine_get_value(m, m->src, m->src_ext);
+            break;
+        }
         case POP: {
+            machine_set_value(m, m->dst, m->dst_ext, *(m->sp)--);
             break;
         }
         case JMP: {
