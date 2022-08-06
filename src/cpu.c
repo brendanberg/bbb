@@ -295,7 +295,8 @@ static inline void machine_instr_execute (machine *m) {
             m->flags = (value & 0xA000) | (flags & 0xFB);
             value = (value << 1) | ((flags & 0x4) >> 2);
             machine_set_value(m, m->dst, m->dst_ext, value);
-            break;
+            machine_set_zn(m, value);
+        break;
         }
         case RRC: {
             uint16_t value = machine_get_value(m, m->dst, m->dst_ext);
@@ -303,27 +304,28 @@ static inline void machine_instr_execute (machine *m) {
             m->flags = (value & 0x1) | (flags & 0xFB);
             value = (value >> 1) | ((flags & 0x4) << 13);
             machine_set_value(m, m->dst, m->dst_ext, value);
+            machine_set_zn(m, value);
             break;
         }
         case AND: {
-            machine_set_value(m, m->dst, m->dst_ext, (
-                machine_get_value(m, m->src, m->src_ext) &
-                machine_get_value(m, m->dst, m->dst_ext)
-            ));
+            uint16_t value = machine_get_value(m, m->src, m->src_ext) &
+                machine_get_value(m, m->dst, m->dst_ext);
+            machine_set_value(m, m->dst, m->dst_ext, value);
+            machine_set_zn(m, value);
             break;
         }
         case OR: {
-            machine_set_value(m, m->dst, m->dst_ext, (
-                machine_get_value(m, m->src, m->src_ext) |
-                machine_get_value(m, m->dst, m->dst_ext)
-            ));
+            uint16_t value = machine_get_value(m, m->src, m->src_ext) |
+                machine_get_value(m, m->dst, m->dst_ext);
+            machine_set_value(m, m->dst, m->dst_ext, value);
+            machine_set_zn(m, value);
             break;
         }
         case XOR: {
-            machine_set_value(m, m->dst, m->dst_ext, (
-                machine_get_value(m, m->src, m->src_ext) ^
-                machine_get_value(m, m->dst, m->dst_ext)
-            ));
+            uint16_t value = machine_get_value(m, m->src, m->src_ext) ^
+                machine_get_value(m, m->dst, m->dst_ext);
+            machine_set_value(m, m->dst, m->dst_ext, value);
+            machine_set_zn(m, value);
             break;
         }
         case CMP: {
