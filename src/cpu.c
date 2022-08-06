@@ -41,6 +41,14 @@ static inline uint16_t machine_get_value(machine *m, Register src, uint16_t src_
     }
 }
 
+static inline void machine_set_zn (machine *m, uint16_t value) {
+    m->flags = (value ? 0 : 1) << 1 | (value < 0 ? 1 : 0);
+}
+
+static inline void machine_set_oc_16 (machine *m, uint16_t value) {
+
+}
+
 static inline uint8_t flags (uint16_t value) {
     return (value ? 0 : 1) << 1 | (value < 0 ? 1 : 0);
 }
@@ -51,11 +59,11 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
         m->flags |= 0x20;
         break;
     case REGISTER_MD:
-        m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
+        //m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
         m->memory->data[dst_ext] = value;
         break;
     case REGISTER_MX:
-        m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
+        //m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
         m->memory->data[(m->ix - m->memory->data) + dst_ext] = value;
         break;
     case REGISTER_PC:
@@ -77,10 +85,10 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
         m->flags = value & 0x0F;
         break;
     case REGISTER_S1:
-        m->flags = (value & 0x0F) << 4;
+        m->flags = (value & 0x03) << 4;
         break;
     default:
-        m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
+        //m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
         m->registers[dst] = value;
         break;
     }
@@ -258,24 +266,27 @@ static inline void machine_instr_execute (machine *m) {
         case INC: {
             uint16_t value = machine_get_value(m, m->dst, m->dst_ext) + 1;
             machine_set_value(m, m->dst, m->dst_ext, value);
+            machine_set_zn(m, value);
             break;
         }
         case DEC: {
             uint16_t value = machine_get_value(m, m->dst, m->dst_ext) - 1;
             machine_set_value(m, m->dst, m->dst_ext, value);
+            machine_set_zn(m, value);
             break;
         }
         case ADD: {
             uint16_t value = (machine_get_value(m, m->src, m->src_ext) +
                 machine_get_value(m, m->dst, m->dst_ext));
             machine_set_value(m, m->dst, m->dst_ext, value);
+            machine_set_zn(m, value);
             break;
         }
         case SUB: {
-            machine_set_value(m, m->dst, m->dst_ext, (
-                machine_get_value(m, m->dst, m->dst_ext) -
-                machine_get_value(m, m->src, m->src_ext)
-            ));
+            uint16_t value = machine_get_value(m, m->dst, m->dst_ext) -
+                machine_get_value(m, m->src, m->src_ext);
+            machine_set_value(m, m->dst, m->dst_ext, value);
+            machine_set_zn(m, value);
             break;
         }
         case RLC: {
