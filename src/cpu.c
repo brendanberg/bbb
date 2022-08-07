@@ -41,30 +41,16 @@ static inline uint16_t machine_get_value(machine *m, Register src, uint16_t src_
     }
 }
 
-static inline void machine_set_zn (machine *m, uint16_t value) {
-    m->flags = (value ? 0 : 1) << 1 | (value < 0 ? 1 : 0);
-}
-
-static inline void machine_set_oc_16 (machine *m, uint16_t value) {
-
-}
-
-static inline uint8_t flags (uint16_t value) {
-    return (value ? 0 : 1) << 1 | (value < 0 ? 1 : 0);
-}
-
 static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext, uint16_t value) {
     switch (dst) {
     case REGISTER_CV:
         m->flags |= 0x20;
         break;
     case REGISTER_MD:
-        //m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
-        m->memory->data[dst_ext] = value;
+        m->memory->data[dst_ext] = value & 0xF;
         break;
     case REGISTER_MX:
-        //m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
-        m->memory->data[(m->ix - m->memory->data) + dst_ext] = value;
+        m->memory->data[(m->ix - m->memory->data) + dst_ext] = value & 0xF;
         break;
     case REGISTER_PC:
         m->pc = (m->memory->data + value);
@@ -88,7 +74,6 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
         m->flags = (value & 0x03) << 4;
         break;
     default:
-        //m->flags = flags(value & 0x0F) | (m->flags & 0xF0);
         m->registers[dst] = value;
         break;
     }
@@ -151,6 +136,10 @@ void machine_reset (machine *m) {
 #define READ_NEXT(x) (*(x)++)
 #define READ_QUARTET(x) (*(x)++|*(x)++<<4|*(x)++<<8|*(x)++<<12)
 
+#define SET_HALT(x) ((x) |= 0x20)
+#define SET_CMP(x, lhs, rhs) ((x) = ((x) & 0xFC) | (((lhs) == (rhs)) << 1) | ((lhs) > (rhs)))
+#define SET_ZN(x, val) ((x) = ((x) & 0xFC) | ((val) ? 0 : 1) << 1 | ((val) < 0 ? 1 : 0))
+
 void machine_run (machine *m) {
     while (!(m->flags & 0x20)) {
         machine_instr_fetch(m);
@@ -195,7 +184,7 @@ static inline void machine_instr_decode (machine *m) {
             switch (m->dst) {
                 case REGISTER_CV: {
                     // Read-only registers are not valid destinations; HALT.
-                    m->flags |= 0x20;
+                    SET_HALT(m->flags);
                     break;
                 }
                 case REGISTER_MD:
@@ -218,7 +207,7 @@ static inline void machine_instr_decode (machine *m) {
             switch (m->dst) {
                 case REGISTER_CV: {
                     // Read-only registers are not valid destinations; HALT.
-                    m->flags |= 0x20;
+                    SET_HALT(m->flags);
                     break;
                 }
                 case REGISTER_MD:
@@ -230,7 +219,6 @@ static inline void machine_instr_decode (machine *m) {
 
             break;
         }
-
 
         case JMP:
         case JSR: {
@@ -245,10 +233,14 @@ static inline void machine_instr_decode (machine *m) {
             m->src = READ_NEXT(m->pc);
 
             switch (m->src) {
-                case REGISTER_CV:
+                case REGISTER_CV: {
+                    m->src_ext = READ_NEXT(m->pc);
+                    break;
+                }
                 case REGISTER_MD:
                 case REGISTER_MX: {
                     m->src_ext = READ_QUARTET(m->pc);
+                    break;
                 }
                 default: break;
             }
@@ -266,27 +258,28 @@ static inline void machine_instr_execute (machine *m) {
         case INC: {
             uint16_t value = machine_get_value(m, m->dst, m->dst_ext) + 1;
             machine_set_value(m, m->dst, m->dst_ext, value);
-            machine_set_zn(m, value);
+            SET_ZN(m->flags, value);
             break;
         }
         case DEC: {
             uint16_t value = machine_get_value(m, m->dst, m->dst_ext) - 1;
             machine_set_value(m, m->dst, m->dst_ext, value);
-            machine_set_zn(m, value);
+            SET_ZN(m->flags, value);
             break;
         }
         case ADD: {
+            // Set overflow and carry based on the target register width
             uint16_t value = (machine_get_value(m, m->src, m->src_ext) +
                 machine_get_value(m, m->dst, m->dst_ext));
             machine_set_value(m, m->dst, m->dst_ext, value);
-            machine_set_zn(m, value);
+            SET_ZN(m->flags, value);
             break;
         }
         case SUB: {
             uint16_t value = machine_get_value(m, m->dst, m->dst_ext) -
                 machine_get_value(m, m->src, m->src_ext);
             machine_set_value(m, m->dst, m->dst_ext, value);
-            machine_set_zn(m, value);
+            SET_ZN(m->flags, value);
             break;
         }
         case RLC: {
@@ -295,7 +288,7 @@ static inline void machine_instr_execute (machine *m) {
             m->flags = (value & 0xA000) | (flags & 0xFB);
             value = (value << 1) | ((flags & 0x4) >> 2);
             machine_set_value(m, m->dst, m->dst_ext, value);
-            machine_set_zn(m, value);
+            SET_ZN(m->flags, value);
         break;
         }
         case RRC: {
@@ -304,44 +297,82 @@ static inline void machine_instr_execute (machine *m) {
             m->flags = (value & 0x1) | (flags & 0xFB);
             value = (value >> 1) | ((flags & 0x4) << 13);
             machine_set_value(m, m->dst, m->dst_ext, value);
-            machine_set_zn(m, value);
+            SET_ZN(m->flags, value);
             break;
         }
         case AND: {
-            uint16_t value = machine_get_value(m, m->src, m->src_ext) &
-                machine_get_value(m, m->dst, m->dst_ext);
+            uint16_t src = machine_get_value(m, m->src, m->src_ext);
+            uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
+
+            if (m->src < REGISTER_PC && m->dst >= REGISTER_PC) {
+                // Moving a 4-bit value into a 16-bit register.
+                // Mask off the source value
+                src |= 0xFFF0;
+            }
+
+            uint16_t value = src & dst;
             machine_set_value(m, m->dst, m->dst_ext, value);
-            machine_set_zn(m, value);
+            SET_ZN(m->flags, value);
             break;
         }
         case OR: {
-            uint16_t value = machine_get_value(m, m->src, m->src_ext) |
-                machine_get_value(m, m->dst, m->dst_ext);
+            uint16_t src = machine_get_value(m, m->src, m->src_ext);
+            uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
+
+            if (m->src < REGISTER_PC && m->dst >= REGISTER_PC) {
+                // Moving a 4-bit value into a 16-bit register.
+                // Mask off the source value
+                src &= 0x000F;
+            }
+
+            uint16_t value = src | dst;
             machine_set_value(m, m->dst, m->dst_ext, value);
-            machine_set_zn(m, value);
+            SET_ZN(m->flags, value);
             break;
         }
         case XOR: {
-            uint16_t value = machine_get_value(m, m->src, m->src_ext) ^
-                machine_get_value(m, m->dst, m->dst_ext);
+            uint16_t src = machine_get_value(m, m->src, m->src_ext);
+            uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
+
+            if (m->src < REGISTER_PC && m->dst >= REGISTER_PC) {
+                // Moving a 4-bit value into a 16-bit register.
+                // Mask off the source value
+                src &= 0x000F;
+            }
+
+            uint16_t value = src ^ dst;
             machine_set_value(m, m->dst, m->dst_ext, value);
-            machine_set_zn(m, value);
+            SET_ZN(m->flags, value);
             break;
         }
         case CMP: {
+            if ((m->src < REGISTER_PC && m->dst >= REGISTER_PC) ||
+                    (m->src >= REGISTER_PC && m->dst < REGISTER_PC)) {
+                // If the src and dst widths don't match, we can't compare
+                SET_HALT(m->flags); 
+            }
+
             uint16_t lhs = machine_get_value(m, m->src, m->src_ext);
             uint16_t rhs = machine_get_value(m, m->dst, m->dst_ext);
-            m->flags = ((m->flags & 0xF0)
-                | ((lhs == rhs) << 1)
-                | (lhs > rhs));
+            SET_CMP(m->flags, lhs, rhs);
             break;
         }
         case PSH: {
-            *(m->sp)++ = machine_get_value(m, m->src, m->src_ext);
+            // TODO: Push 4 values if the source is 16 bit?
+            *(m->sp)++ = machine_get_value(m, m->src, m->src_ext) & 0xF;
             break;
         }
         case POP: {
-            machine_set_value(m, m->dst, m->dst_ext, *(m->sp)--);
+            uint16_t value = *(m->sp)-- & 0xF;
+            // TODO: Pop 4 values if the destination is 16 bit?
+            if (m->dst >= REGISTER_PC) {
+                // Moving a 4-bit value into a 16-bit register.
+                // Combine the masked src and dst values
+                uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
+                machine_set_value(m, m->dst, m->dst_ext, (dst & 0xFFF0) | value);
+            } else {
+                machine_set_value(m, m->dst, m->dst_ext, value);
+            }
             break;
         }
         case JMP: {
@@ -362,9 +393,17 @@ static inline void machine_instr_execute (machine *m) {
             break;
         }
         case MOV: {
-            machine_set_value(m, m->dst, m->dst_ext, 
-                machine_get_value(m, m->src, m->src_ext)
-            );
+            uint16_t value = 0;
+            if (m->src < REGISTER_PC && m->dst >= REGISTER_PC) {
+                // Moving a 4-bit value into a 16-bit register.
+                // Combine the masked src and dst values
+                value = machine_get_value(m, m->src, m->src_ext);
+                uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
+                machine_set_value(m, m->dst, m->dst_ext, (dst & 0xFFF0) | (value & 0xF));
+            } else {
+                value = machine_get_value(m, m->src, m->src_ext);
+                machine_set_value(m, m->dst, m->dst_ext, value);
+            }
             break;
         }
     }
