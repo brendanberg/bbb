@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "cpu.h"
+#include "io.h"
 #include "memory.h"
 
 
@@ -85,11 +86,12 @@ void machine_init (machine **m, size_t size) {
     *m = malloc(sizeof(machine));
     memory_init(&((*m)->memory), size);
     machine_reset(*m);
+    kbio_setup();
 }
 
 void machine_show (machine *m) {
-    printf("+-------------+--------+------------------------------+\n");
-    printf("| A B C D E F | HIOCZN | PROG  STAK  INTR  INDX  TEMP |\n");
+    printf("+-------------+--------+------------------------------+\r\n");
+    printf("| A B C D E F | HIOCZN | PROG  STAK  INTR  INDX  TEMP |\r\n");
     printf("| %X %X %X %X %X %X | ",
         m->registers[REGISTER_A],
         m->registers[REGISTER_B],
@@ -106,14 +108,29 @@ void machine_show (machine *m) {
     printf(m->flags & 0x02 ? "*" : ".");
     printf(m->flags & 0x01 ? "*" : ".");
 
-    printf(" | %04X  %04X  %04X  %04X  %04X |\n",
+    printf(" | %04X  %04X  %04X  %04X  %04X |\r\n",
         (uint8_t) (m->pc - m->memory->data),
         (uint8_t) (m->sp - m->memory->data),
         (uint8_t) (m->iv - m->memory->data),
         (uint8_t) (m->ix - m->memory->data),
         (uint8_t) (m->ta - m->memory->data)
     );
-    printf("+-------------+--------+------------------------------+\n\n");
+    printf("+-------------+--------+------------------------------+\r\n\r\n");
+    printf("\033[5A");
+    // printf("  %0X%0X%0X%0X\r\n",
+    //     m->memory->data[0xFFF0],
+    //     m->memory->data[0xFFF1],
+    //     m->memory->data[0xFFF2],
+    //     m->memory->data[0xFFF3]
+    // );
+}
+
+static inline void machine_io (machine *m) {
+    uint16_t keymap = kbio_get_keymap();
+    m->memory->data[0xFFF0] = keymap & 0x000F;
+    m->memory->data[0xFFF1] = (keymap & 0x00F0) >> 4;
+    m->memory->data[0xFFF2] = (keymap & 0x0F00) >> 8;
+    m->memory->data[0xFFF3] = (keymap & 0xF000) >> 12;
 }
 
 void machine_start (machine *m) {
@@ -146,6 +163,7 @@ void machine_run (machine *m) {
         machine_instr_decode(m);
         machine_instr_execute(m);
         machine_show(m);
+        machine_io(m);
     }
 }
 
@@ -412,4 +430,5 @@ static inline void machine_instr_execute (machine *m) {
 void machine_free (machine *m) {
     memory_free(m->memory);
     free(m);
+    printf("\033[5B");
 }
