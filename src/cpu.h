@@ -69,6 +69,7 @@ typedef struct machine {
 void machine_init (machine **mach, size_t size);
 
 void machine_show (machine *mach);
+static inline void machine_io (machine *mach);
 
 void machine_start (machine *mach);
 void machine_pause (machine *mach);
@@ -77,4 +78,5 @@ void machine_reset (machine *mach);
 
 void machine_free (machine *mach);
 void machine_run (machine *mach);
+
 #endif
