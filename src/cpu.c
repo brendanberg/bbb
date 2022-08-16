@@ -89,34 +89,44 @@ void machine_init (machine **m, size_t size) {
     kbio_setup();
 }
 
+#define RENDER(t, c, e) ((t)?printf((c),(t)):printf((e),(t)))
+
 void machine_show (machine *m) {
-    printf("+-------------+--------+------------------------------+\r\n");
-    printf("| A B C D E F | HIOCZN | PROG  STAK  INTR  INDX  TEMP |\r\n");
-    printf("| %X %X %X %X %X %X | ",
-        m->registers[REGISTER_A],
-        m->registers[REGISTER_B],
-        m->registers[REGISTER_C],
-        m->registers[REGISTER_D],
-        m->registers[REGISTER_E],
-        m->registers[REGISTER_F]
-    );
+    printf("\e[38:5:13m");
+    printf("╔═════════════╤════════╤══════════════════════════════╗\r\n");
+    printf("║\e[38:5:6m A B C D E F \e[38:5:13m│\e[38:5:6m HIOCZN \e[38:5:13m│\e[38:5:6m PROG  STAK  INTR  INDX  TEMP \e[38:5:13m║\r\n");
+    printf("║\e[38:5:5m ");
 
-    printf(m->flags & 0x20 ? "*" : ".");
-    printf(m->flags & 0x10 ? "*" : ".");
-    printf(m->flags & 0x08 ? "*" : ".");
-    printf(m->flags & 0x04 ? "*" : ".");
-    printf(m->flags & 0x02 ? "*" : ".");
-    printf(m->flags & 0x01 ? "*" : ".");
+    RENDER(m->registers[REGISTER_A], "\e[1m%X\e[0;35m ", "\e[38:5:11m%X ");
+    RENDER(m->registers[REGISTER_B], "\e[1m%X\e[0;35m ", "\e[38:5:11m%X ");
+    RENDER(m->registers[REGISTER_C], "\e[1m%X\e[0;35m ", "\e[38:5:11m%X ");
+    RENDER(m->registers[REGISTER_D], "\e[1m%X\e[0;35m ", "\e[38:5:11m%X ");
+    RENDER(m->registers[REGISTER_E], "\e[1m%X\e[0;35m ", "\e[38:5:11m%X ");
+    RENDER(m->registers[REGISTER_F], "\e[1m%X\e[0;35m ", "\e[38:5:11m%X ");
 
-    printf(" | %04X  %04X  %04X  %04X  %04X |\r\n",
-        (uint8_t) (m->pc - m->memory->data),
-        (uint8_t) (m->sp - m->memory->data),
-        (uint8_t) (m->iv - m->memory->data),
-        (uint8_t) (m->ix - m->memory->data),
-        (uint8_t) (m->ta - m->memory->data)
-    );
-    printf("+-------------+--------+------------------------------+\r\n\r\n");
-    printf("\033[5A");
+    printf("\e[38:5:13m│\e[38:5:4m ");
+
+    printf(m->flags & 0x20 ? "\033[38:5:5m✺\033[38:5:4m" : "\e[38:5:11m◌");
+    printf(m->flags & 0x10 ? "\033[38:5:5m✺\033[38:5:4m" : "\e[38:5:11m◌");
+    printf(m->flags & 0x08 ? "\033[38:5:5m✺\033[38:5:4m" : "\e[38:5:11m◌");
+    printf(m->flags & 0x04 ? "\033[38:5:5m✺\033[38:5:4m" : "\e[38:5:11m◌");
+    printf(m->flags & 0x02 ? "\033[38:5:5m✺\033[38:5:4m" : "\e[38:5:11m◌");
+    printf(m->flags & 0x01 ? "\033[38:5:5m✺\033[38:5:4m" : "\e[38:5:11m◌");
+
+    printf(" \e[38:5:13m│\e[38:5:5m");
+
+    RENDER((uint16_t) (m->pc - m->memory->data), " \e[1m%04X\e[0;35m ", " \e[38:5:11m%04X ");
+    RENDER((uint16_t) (m->sp - m->memory->data), " \e[1m%04X\e[0;35m ", " \e[38:5:11m%04X ");
+    RENDER((uint16_t) (m->iv - m->memory->data), " \e[1m%04X\e[0;35m ", " \e[38:5:11m%04X ");
+    RENDER((uint16_t) (m->ix - m->memory->data), " \e[1m%04X\e[0;35m ", " \e[38:5:11m%04X ");
+    RENDER((uint16_t) (m->ta - m->memory->data), " \e[1m%04X\e[0;35m ", " \e[38:5:11m%04X ");
+
+    printf("\e[38:5:13m║\r\n");
+    printf("╚═════════════╧════════╧══════════════════════════════╝\e[0m\r\n\r\n");
+    // printf("⢕⢕⢕⢕⢕⢕⢕⢕⢕⢕\r\n");
+    // printf("⢕⢕⣿⣿⣿⣿⣿⣿⣿⣿\r\n");
+    // printf("⢕⢕⣿        \r\n");
+    printf("\e[5A");
     // printf("  %0X%0X%0X%0X\r\n",
     //     m->memory->data[0xFFF0],
     //     m->memory->data[0xFFF1],
