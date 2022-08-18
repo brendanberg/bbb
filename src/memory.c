@@ -6,10 +6,11 @@
 #include "memory.h"
 
 
-void memory_init (memory **mem, size_t size) {
-    *mem = malloc(sizeof(memory));
-    (*mem)->size = size;
-    (*mem)->data = malloc(size * sizeof(uint8_t));
+memory *memory_init (size_t size) {
+    memory *mem = malloc(sizeof(memory));
+    mem->size = size;
+    mem->data = malloc(size * sizeof(uint8_t));
+    return mem;
 }
 
 uint8_t memory_read (memory *mem, size_t address) {

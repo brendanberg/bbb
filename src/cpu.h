@@ -66,7 +66,7 @@ typedef struct machine {
     uint16_t dst_ext;
 } machine;
 
-void machine_init (machine **mach, size_t size);
+machine *machine_init (size_t size);
 
 void machine_show (machine *mach);
 static inline void machine_io (machine *mach);

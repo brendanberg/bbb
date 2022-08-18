@@ -10,7 +10,7 @@ typedef struct memory {
     uint8_t *data;
 } memory;
 
-void memory_init (memory **mem, size_t size);
+memory *memory_init (size_t size);
 
 uint8_t memory_read (memory *mem, size_t address);
 bool memory_write (memory *mem, size_t address, uint8_t value);
