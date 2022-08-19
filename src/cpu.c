@@ -96,7 +96,7 @@ machine *machine_init (size_t size) {
 
 void machine_show (machine *m) {
     // Return to home
-    printf("\e[8A");
+    printf("\e[8A\e[?25l");
     printf("\r\n");
     printf("\e[38:5:13m");
     printf("╔═════════════╤════════╤══════════════════════════════╗\r\n");
@@ -138,7 +138,7 @@ void machine_show (machine *m) {
         m->memory->data[0xFFF2],
         m->memory->data[0xFFF3]
     );
-    printf("\r\n\r\n\r\n\r\n");
+    printf("\r\n\r\n\r\n\r\n\e[?25h");
 }
 
 static inline void machine_io (machine *m) {
