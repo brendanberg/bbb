@@ -78,8 +78,6 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
         m->registers[dst] = value;
         break;
     }
-
-
 }
 
 machine *machine_init (size_t size) {
@@ -87,7 +85,7 @@ machine *machine_init (size_t size) {
     m->memory = memory_init(size);
     machine_reset(m);
     kbio_setup();
-    printf("\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n");
+    printf("\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n");
     // fprintf(stderr, "Starting up...\n");
     return m;
 }
@@ -97,7 +95,7 @@ machine *machine_init (size_t size) {
 
 void machine_show (machine *m) {
     // Return to home
-    printf(E(8A) E(?25l) "\r\n" E(38:5:13m));
+    printf(E(11A) E(?25l) "\r\n" E(38:5:13m));
     printf("╔═════════════╤════════╤══════════════════════════════╗\r\n");
     printf("║" E(38:5:6m) " A B C D E F " E(38:5:13m));
     printf("│" E(38:5:6m) " HIOCZN " E(38:5:13m));
@@ -129,17 +127,15 @@ void machine_show (machine *m) {
     RENDER((uint16_t) (m->ta - m->memory->data), " " E(1m) E(38:5:5m) "%04X" E(0;35m) " ", " " E(38:5:11m) "%04X ");
 
     printf(E(38:5:13m) "║\r\n");
-    printf("╚═════════════╧════════╧══════════════════════════════╝" E(0m));
-    // printf("⢕⢕⢕⢕⢕⢕⢕⢕⢕⢕\r\n");
-    // printf("⢕⢕⣿⣿⣿⣿⣿⣿⣿⣿\r\n");
-    // printf("⢕⢕⣿        \r\n");
-    printf("  %0X%0X%0X%0X",
-        m->memory->data[0xFFF0],
-        m->memory->data[0xFFF1],
-        m->memory->data[0xFFF2],
-        m->memory->data[0xFFF3]
-    );
-    printf("\r\n\r\n\r\n\r\n" E(?25h));
+    printf("╠═════════╤═══╧════════╧══════════════════════════════╣\r\n");
+
+    printf("║ . . . . │                                           ║\r\n");
+    printf("║ . . . . │                                           ║\r\n");
+    printf("║ . . . . │                                           ║\r\n");
+    printf("║ . . . . │                                           ║\r\n");
+
+    printf("╚═════════╧═══════════════════════════════════════════╝\r\n");
+    printf(E(0m) "\r\n" E(?25h));
 }
 
 static inline void machine_io (machine *m) {
