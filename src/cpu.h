@@ -8,25 +8,6 @@
 typedef enum { STATE_RUN, STATE_HALT } State;
 
 typedef enum {
-    NNEG,  // N=0
-    NZER,  // Z=0
-    NCAR,  // C=0
-    NOVR,  // O=0
-    NINT,  // I=0
-    NHLT,  // H=0
-    NFLS,  // 0=0
-    NTRU,  // 1=0
-    NEG,   // N=1
-    ZER,   // Z=1
-    CAR,   // C=1
-    OVR,   // O=1
-    INT,   // I=1
-    HLT,   // H=1
-    FLS,   // 0=1
-    TRU    // 1=1
-} Test;
-
-typedef enum {
     REGISTER_A,   // General purpose register A
     REGISTER_B,   // General purpose register B
     REGISTER_C,   // General purpose register C
@@ -65,25 +46,33 @@ typedef enum {
 } Opcode;
 
 typedef struct machine {
+    // - The machine status indicates whether it is running or halted.
+    // - The general purpose registers are maintained in an array that is
+    // indexed by the enum value of the register identifier (REGISTER_A
+    // through REGISTER_F).
+    // - The status registers S0 and S2 are stored as the high and low
+    // nibbles of the flags byte.
     uint8_t status;
-    uint8_t registers[8];
+    uint8_t registers[8]; // TODO: Find out why there are 8
     uint8_t flags;
-    // ------
-    // uint16_t *pc;
-    // uint16_t *sp;
-    // uint16_t *iv;
-    // uint16_t *ix;
-    // uint16_t *ta;
+
+    // The pc, sp, iv, ix, and ta registers are all pointers into memory.
+    // On bbb hardware, they would be 16 bits wide, but we use machine
+    // pointer sizes in the emulator.
     uint8_t *pc;
     uint8_t *sp;
     uint8_t *iv;
     uint8_t *ix;
     uint8_t *ta;
+
+    // The following fields are private registers for instruction decoding.
     Opcode instr;
     Register src;
     Register dst;
     uint16_t src_ext;
     uint16_t dst_ext;
+
+    // And finally, a pointer to the machine's memory.
     memory *memory;
 } machine;
 
