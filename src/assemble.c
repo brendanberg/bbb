@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "assemble.h"
 #include "memory.h"
