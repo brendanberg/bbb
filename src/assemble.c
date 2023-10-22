@@ -509,8 +509,8 @@ memory *assemble(char *prog) {
             printf("%04X\n", instr[2]);
             printf("----\n");
             instr[0] = 0;
-            instr[0] = 0;
-            instr[0] = 0;
+            instr[1] = 0;
+            instr[2] = 0;
 
             state = EXPECT_OP;
         } else if (state == ERROR) {
