@@ -5,7 +5,7 @@
 
 #include "memory.h"
 
-typedef enum { STATE_RUN, STATE_HALT } State;
+typedef enum { STATE_RUN, STATE_HALT } MachineState;
 
 typedef enum {
     REGISTER_A,   // General purpose register A
@@ -52,7 +52,7 @@ typedef struct machine {
     // through REGISTER_F).
     // - The status registers S0 and S2 are stored as the high and low
     // nibbles of the flags byte.
-    uint8_t status;
+    MachineState status;
     uint8_t registers[8]; // TODO: Find out why there are 8
     uint8_t flags;
 
@@ -85,8 +85,8 @@ void machine_start(machine *mach);
 void machine_pause(machine *mach);
 void machine_halt(machine *mach);
 void machine_reset(machine *mach);
+void machine_run(machine *mach);
 
 void machine_free(machine *mach);
-void machine_run(machine *mach);
 
 #endif

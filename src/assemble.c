@@ -25,6 +25,21 @@ static inline ParseState parse_src(char *token, uint16_t instr[]);
 static inline bool parse_hex(char *token, uint16_t *result);
 static inline bool parse_label(char *token);
 
+//(*(m)++ = (v))
+#define PUSH_NEXT(m, v) \
+    do { \
+        printf("push %X\n", v); \
+        *(m)++ = (v); \
+    } while (0)
+
+#define PUSH_QUARTET(m, v) \
+    do { \
+        printf("push %04X\n", v); \
+        *(m)++ = ((v)&0xF) >> 12; \
+        *(m)++ = ((v)&0xF) >> 8; \
+        *(m)++ = ((v)&0xF) >> 4; \
+        *(m)++ = ((v)&0xF); \
+    } while (0)
 
 static inline ParseState parse_opcode(char *token, uint16_t instr[]) {
     if (strcmp(token, "NOP") == 0) {
@@ -436,6 +451,9 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
 }
 
 memory *assemble(char *prog) {
+    uint8_t *image = calloc(64 * 1024, sizeof(uint8_t));
+    uint8_t *offset = image;
+
     char *delim = "\n\t ";
     char *close = ")";
     char *sep = delim;
@@ -505,15 +523,85 @@ memory *assemble(char *prog) {
 
         if (state == DONE) {
             // TODO: Push instr into image buffer
-            printf("%04X\n", instr[0]);
-            printf("%04X\n", instr[1]);
-            printf("%04X\n", instr[2]);
-            printf("----\n");
+            // printf("%04X\n", instr[0]);
+            // printf("%04X\n", instr[1]);
+            // printf("%04X\n", instr[2]);
+            // printf("----\n");
+            uint8_t opcode = instr[0] >> 12;
+            uint8_t src = (instr[0] & 0xF00) >> 8;
+            uint8_t dst = instr[0] & 0xF;
+
+            switch (opcode) {
+            case NOP: {
+                PUSH_NEXT(offset, NOP);
+                break;
+            }
+            case JMP:
+            case JSR: {
+                PUSH_NEXT(offset, opcode);
+                PUSH_NEXT(offset, dst);
+                PUSH_QUARTET(offset, instr[1]);
+                break;
+            }
+            case PSH: {
+                if (src <= REGISTER_A && src >= REGISTER_TA) {
+                    PUSH_NEXT(offset, opcode);
+                    PUSH_NEXT(offset, src);
+                } else if (src == REGISTER_CV) {
+                    PUSH_NEXT(offset, opcode);
+                    PUSH_NEXT(offset, REGISTER_CV);
+                    PUSH_NEXT(offset, (instr[0] & 0xF0 ) >> 4);
+                } else {
+                    PUSH_NEXT(offset, opcode);
+                    PUSH_NEXT(offset, src);
+                    PUSH_QUARTET(offset, instr[1]);
+                }
+                break;
+            }
+            case INC:
+            case DEC:
+            case RLC:
+            case RRC:
+            case POP: {
+                if (dst <= REGISTER_A && dst >= REGISTER_TA) {
+                    PUSH_NEXT(offset, opcode);
+                    PUSH_NEXT(offset, dst);
+                } else if (dst == REGISTER_CV) {
+                    state = ERROR;
+                    return NULL;
+                } else {
+                    PUSH_NEXT(offset, opcode);
+                    PUSH_NEXT(offset, dst);
+                    PUSH_QUARTET(offset, instr[1]);
+                }
+                break;
+            }
+            case ADD:
+            case SUB:
+            case AND:
+            case OR:
+            case XOR:
+            case CMP:
+            case MOV: {
+                break;
+            }
+            }            
+
+            // Reset the instruction assembly area
             instr[0] = 0;
             instr[1] = 0;
             instr[2] = 0;
 
             state = EXPECT_OP;
+            for (size_t i = 0; i < 40; i++) {
+                printf("%X", image[i]);
+                if (i % 2 == 1) {
+                    printf(" ");
+                }
+            }
+            printf("  0x%p\n", offset);
+            // printf("\n");
+
         } else if (state == ERROR) {
             // TODO: Print friendly error messages
             printf("ERROR encountered %s\n", p);
@@ -521,7 +609,12 @@ memory *assemble(char *prog) {
         }
     }
 
-    printf("\n");
+    // printf("%X", image);
+    // printf("%X", offset);
+    // for (uint8_t *p = image; p < offset; *p++) {
+    //     printf("%X ", *p);
+    // }
+    // printf("\n");
     memory *m = memory_init(0);
     return m;
 }
