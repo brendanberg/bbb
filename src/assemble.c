@@ -1,10 +1,11 @@
-#include <string.h>
-#include <stdio.h>
-#include <stdbool.h>
-
 #include "assemble.h"
-#include "memory.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "cpu.h"
+#include "memory.h"
 
 typedef enum {
     DONE,
@@ -25,20 +26,14 @@ static inline ParseState parse_src(char *token, uint16_t instr[]);
 static inline bool parse_hex(char *token, uint16_t *result);
 static inline bool parse_label(char *token);
 
-//(*(m)++ = (v))
-#define PUSH_NEXT(m, v) \
-    do { \
-        printf("push %X\n", v); \
-        *(m)++ = (v); \
-    } while (0)
+#define PUSH_NEXT(m, v) (*(m)++ = (v))
 
-#define PUSH_QUARTET(m, v) \
-    do { \
-        printf("push %04X\n", v); \
-        *(m)++ = ((v)&0xF) >> 12; \
-        *(m)++ = ((v)&0xF) >> 8; \
-        *(m)++ = ((v)&0xF) >> 4; \
-        *(m)++ = ((v)&0xF); \
+#define PUSH_QUARTET(m, v)           \
+    do {                             \
+        *(m)++ = ((v)&0xF000) >> 12; \
+        *(m)++ = ((v)&0xF00) >> 8;   \
+        *(m)++ = ((v)&0xF0) >> 4;    \
+        *(m)++ = ((v)&0xF);          \
     } while (0)
 
 static inline ParseState parse_opcode(char *token, uint16_t instr[]) {
@@ -132,9 +127,10 @@ static inline ParseState parse_test(char *token, uint16_t instr[]) {
         return ERROR;
     }
 
-    if (token[2] == '1') { instr[0] |= 0x8;}
+    if (token[2] == '1') {
+        instr[0] |= 0x8;
+    }
     return EXPECT_ADDR;
-
 }
 
 static inline ParseState parse_addr(char *token, uint16_t instr[]) {
@@ -188,11 +184,6 @@ static inline ParseState parse_addr(char *token, uint16_t instr[]) {
 static inline ParseState parse_dest(char *token, uint16_t instr[]) {
     uint16_t result = 0;
     size_t len = strlen(token);
-    size_t idx = 1;
-
-    if (instr[0] & REGISTER_MD << 8 || instr[0] & REGISTER_MX << 8) {
-        idx = 2;
-    }
 
     switch (token[0]) {
     case '@': {
@@ -201,7 +192,7 @@ static inline ParseState parse_dest(char *token, uint16_t instr[]) {
             instr[0] |= REGISTER_MD;
 
             if (parse_hex(&token[1], &result)) {
-                instr[idx] |= result;
+                instr[2] |= result;
             } else {
                 return ERROR;
             }
@@ -216,7 +207,7 @@ static inline ParseState parse_dest(char *token, uint16_t instr[]) {
             instr[0] |= REGISTER_MX;
 
             if (parse_hex(&token[1], &result)) {
-                instr[idx] |= result;
+                instr[2] |= result;
             } else {
                 return ERROR;
             }
@@ -241,12 +232,16 @@ static inline ParseState parse_dest(char *token, uint16_t instr[]) {
     case 'D':
     case 'E':
     case 'F': {
-        if (strlen(token) != 1) { return ERROR; }
+        if (strlen(token) != 1) {
+            return ERROR;
+        }
         instr[0] |= (token[0] - 'A');
         break;
     }
     case 'S': {
-        if (strlen(token) != 2) { return ERROR; }
+        if (strlen(token) != 2) {
+            return ERROR;
+        }
 
         if (token[1] == '0') {
             instr[0] |= REGISTER_S0;
@@ -268,7 +263,9 @@ static inline ParseState parse_dest(char *token, uint16_t instr[]) {
         break;
     }
     case 'I': {
-        if (strlen(token) != 2) { return ERROR; }
+        if (strlen(token) != 2) {
+            return ERROR;
+        }
 
         if (token[1] == 'V') {
             instr[0] |= REGISTER_IV;
@@ -280,7 +277,7 @@ static inline ParseState parse_dest(char *token, uint16_t instr[]) {
         break;
     }
     case 'T': {
-        if (strcmp(token, "TA") == 0) { 
+        if (strcmp(token, "TA") == 0) {
             instr[0] |= REGISTER_TA;
         } else {
             return ERROR;
@@ -314,10 +311,8 @@ static inline bool parse_hex(char *token, uint16_t *result) {
 
 static inline bool parse_label(char *token) {
     for (char *ch = token; *ch != 0; ch++) {
-        if (!((*ch >= 'A' && *ch <= 'Z') ||
-            (*ch >= 'a' && *ch <= 'z') ||
-            (*ch >= '0' && *ch <= '9') ||
-            (*ch == '_'))) {
+        if (!((*ch >= 'A' && *ch <= 'Z') || (*ch >= 'a' && *ch <= 'z') ||
+              (*ch >= '0' && *ch <= '9') || (*ch == '_'))) {
             return false;
         }
     }
@@ -336,7 +331,7 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
 
         if (len == 2) {
             if (parse_hex(&token[1], &result)) {
-                instr[0] |= (result & 0xF) << 4;
+                instr[1] |= result & 0xF;
             } else {
                 return ERROR;
             }
@@ -397,12 +392,16 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
     case 'D':
     case 'E':
     case 'F': {
-        if (strlen(token) != 1) { return ERROR; }
+        if (strlen(token) != 1) {
+            return ERROR;
+        }
         instr[0] |= (token[0] - 'A') << 8;
         break;
     }
     case 'S': {
-        if (strlen(token) != 2) { return ERROR; }
+        if (strlen(token) != 2) {
+            return ERROR;
+        }
 
         if (token[1] == '0') {
             instr[0] |= REGISTER_S0 << 8;
@@ -424,7 +423,9 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
         break;
     }
     case 'I': {
-        if (strlen(token) != 2) { return ERROR; }
+        if (strlen(token) != 2) {
+            return ERROR;
+        }
 
         if (token[1] == 'V') {
             instr[0] |= REGISTER_IV << 8;
@@ -436,7 +437,7 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
         break;
     }
     case 'T': {
-        if (strcmp(token, "TA") == 0) { 
+        if (strcmp(token, "TA") == 0) {
             instr[0] |= REGISTER_TA << 8;
         } else {
             return ERROR;
@@ -482,7 +483,8 @@ memory *assemble(char *prog) {
 
         if (p[length - 1] == ':') {
             // We encountered a label definition.
-            // TODO: Get the current offset in the image and add the label name to the lookup table
+            // TODO: Get the current offset in the image and add the label name
+            // to the lookup table
             continue;
         }
 
@@ -509,6 +511,10 @@ memory *assemble(char *prog) {
         }
         case EXPECT_PSH_SRC: {
             if (parse_src(p, instr) != ERROR) {
+                // The parse_src function sets the parse state to EXPECT_DST,
+                // which is the wrong state after parsing the source of a PSH
+                // instruction. We set the state to DONE if we did not encounter
+                // an error.
                 state = DONE;
             } else {
                 state = ERROR;
@@ -544,13 +550,13 @@ memory *assemble(char *prog) {
                 break;
             }
             case PSH: {
-                if (src <= REGISTER_A && src >= REGISTER_TA) {
+                if (src >= REGISTER_A && src <= REGISTER_TA) {
                     PUSH_NEXT(offset, opcode);
                     PUSH_NEXT(offset, src);
                 } else if (src == REGISTER_CV) {
                     PUSH_NEXT(offset, opcode);
                     PUSH_NEXT(offset, REGISTER_CV);
-                    PUSH_NEXT(offset, (instr[0] & 0xF0 ) >> 4);
+                    PUSH_NEXT(offset, instr[1] & 0xF);
                 } else {
                     PUSH_NEXT(offset, opcode);
                     PUSH_NEXT(offset, src);
@@ -563,7 +569,7 @@ memory *assemble(char *prog) {
             case RLC:
             case RRC:
             case POP: {
-                if (dst <= REGISTER_A && dst >= REGISTER_TA) {
+                if (dst >= REGISTER_A && dst <= REGISTER_TA) {
                     PUSH_NEXT(offset, opcode);
                     PUSH_NEXT(offset, dst);
                 } else if (dst == REGISTER_CV) {
@@ -572,7 +578,7 @@ memory *assemble(char *prog) {
                 } else {
                     PUSH_NEXT(offset, opcode);
                     PUSH_NEXT(offset, dst);
-                    PUSH_QUARTET(offset, instr[1]);
+                    PUSH_QUARTET(offset, instr[2]);
                 }
                 break;
             }
@@ -583,9 +589,25 @@ memory *assemble(char *prog) {
             case XOR:
             case CMP:
             case MOV: {
+                PUSH_NEXT(offset, opcode);
+                PUSH_NEXT(offset, src);
+                PUSH_NEXT(offset, dst);
+
+                if (src == REGISTER_CV && dst <= REGISTER_S1) {
+                    PUSH_NEXT(offset, instr[1] & 0xF);
+                } else if (src == REGISTER_CV && dst >= REGISTER_PC) {
+                    PUSH_QUARTET(offset, instr[1]);
+                } else if (src >= REGISTER_MD) {
+                    PUSH_QUARTET(offset, instr[1]);
+                }
+
+                if (dst >= REGISTER_MD) {
+                    PUSH_QUARTET(offset, instr[2]);
+                }
+
                 break;
             }
-            }            
+            }
 
             // Reset the instruction assembly area
             instr[0] = 0;
@@ -593,49 +615,13 @@ memory *assemble(char *prog) {
             instr[2] = 0;
 
             state = EXPECT_OP;
-            for (size_t i = 0; i < 40; i++) {
-                printf("%X", image[i]);
-                if (i % 2 == 1) {
-                    printf(" ");
-                }
-            }
-            printf("  0x%p\n", offset);
-            // printf("\n");
-
         } else if (state == ERROR) {
             // TODO: Print friendly error messages
             printf("ERROR encountered %s\n", p);
-            //break;
+            break;
         }
     }
 
-    // printf("%X", image);
-    // printf("%X", offset);
-    // for (uint8_t *p = image; p < offset; *p++) {
-    //     printf("%X ", *p);
-    // }
-    // printf("\n");
     memory *m = memory_init(0);
     return m;
-}
-
-int main(int argc, char *argsv[]) {
-    char *str =
-        "MOV #4 A\n"
-        "MOV #9 B\n"
-        "ADD A B\n"
-        "DEC B\n"
-        "JMP Z=0 @000B\n"
-        "MOV @FFF0 C\n"
-        "MOV @FFF1 D\n"
-        "MOV @FFF2 E\n"
-        "MOV @FFF3 F\n"
-        "CMP #0 C\n"
-        "JMP N=1 @5A5A\n";
-
-    char *prog = calloc(strlen(str) + 1, sizeof(char));
-    memcpy(prog, str, strlen(str));
-    assemble(prog);
-
-    return 0;
 }
