@@ -2,27 +2,27 @@
      MOV #4 A
      MOV #9 B
      ADD A B
-FOO:
+FOO: (0x000B)
      DEC B
-     JMP Z=0 .FOO
+     JMP Z=0 (@000B) .FOO
 
-LOOP:
+(LOOP: 0x0013 19) 
      MOV @FFF0 C
      MOV @FFF1 D
      MOV @FFF2 E
      MOV @FFF3 F
      CMP #0 C
-     JMP Z=0 .HALT
+     JMP Z=0 @005D (.HALT)
      CMP #0 D
-     JMP Z=0 .HALT
+     JMP Z=0 @005D (.HALT)
      CMP #0 E
-     JMP Z=0 .HALT
+     JMP Z=0 @005D (.HALT)
      CMP #0 F
-     JMP Z=0 .HALT
-     JMP Z=1 .LOOP
-HALT:
+     JMP Z=0 @005D (.HALT)
+     JMP Z=1 @0013 (.LOOP)
+(HALT: 0x005D)
      OR #2 S1
 
 
-INT:
+(INT:)
      (Read keyboard values from 0xFFF0 through 0xFFF3)

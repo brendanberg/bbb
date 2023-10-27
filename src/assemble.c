@@ -87,13 +87,15 @@ static inline ParseState parse_opcode(char *token, uint16_t instr[]) {
         return EXPECT_OP_SRC;
     } else {
         // We encountered an unrecognized opcode
+        fprintf(stderr, "error: encountered unrecognized opcode '%s'\n", token);
         return ERROR;
     }
 }
 
 static inline ParseState parse_test(char *token, uint16_t instr[]) {
     if (token[1] != '=' || (token[2] != '0' && token[2] != '1')) {
-        // We encountered an unrecognized test
+        fprintf(stderr, "error: encountered unrecognized condition '%s'\n",
+                token);
         return ERROR;
     }
 
@@ -123,7 +125,8 @@ static inline ParseState parse_test(char *token, uint16_t instr[]) {
         instr[0] |= 0x7;
         break;
     default:
-        // We encountered an unrecognized test
+        fprintf(stderr, "error: encountered unrecognized condition '%s'\n",
+                token);
         return ERROR;
     }
 
@@ -310,6 +313,12 @@ static inline bool parse_hex(char *token, uint16_t *result) {
 }
 
 static inline bool parse_label(char *token) {
+    char hd = *token++;
+
+    if (!(hd >= 'A' && hd <= 'Z') || (hd >= 'a' && hd <= 'z') || (hd == '_')) {
+        return false;
+    }
+
     for (char *ch = token; *ch != 0; ch++) {
         if (!((*ch >= 'A' && *ch <= 'Z') || (*ch >= 'a' && *ch <= 'z') ||
               (*ch >= '0' && *ch <= '9') || (*ch == '_'))) {
@@ -333,15 +342,26 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
             if (parse_hex(&token[1], &result)) {
                 instr[1] |= result & 0xF;
             } else {
+                fprintf(
+                    stderr,
+                    "error: expected a hexadecimal int literal, found '%s'\n",
+                    token);
                 return ERROR;
             }
         } else if (len == 5) {
             if (parse_hex(&token[1], &result)) {
                 instr[1] |= result;
             } else {
+                fprintf(
+                    stderr,
+                    "error: expected a hexadecimal int literal, found '%s'\n",
+                    token);
                 return ERROR;
             }
         } else {
+            fprintf(stderr,
+                    "error: expected either 1 or 4 hex digits, got '%s'\n",
+                    token);
             return ERROR;
         }
         break;
@@ -354,9 +374,15 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
             if (parse_hex(&token[1], &result)) {
                 instr[1] |= result;
             } else {
+                fprintf(stderr,
+                        "error: expected a hexadecimal address, found '%s'\n",
+                        token);
                 return ERROR;
             }
         } else {
+            fprintf(stderr,
+                    "error: expected 4 hex digits for address, got '%s'\n",
+                    token);
             return ERROR;
         }
         break;
@@ -369,9 +395,15 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
             if (parse_hex(&token[1], &result)) {
                 instr[1] |= result;
             } else {
+                fprintf(stderr,
+                        "error: expected a hexadecimal address, found '%s'\n",
+                        token);
                 return ERROR;
             }
         } else {
+            fprintf(stderr,
+                    "error: expected 4 hex digits for address, got '%s'\n",
+                    token);
             return ERROR;
         }
         break;
@@ -380,8 +412,10 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
         // Label reference
         char *label;
         if (parse_label(&token[1])) {
+            fprintf(stderr, "info: label '%s'\n", token);
             // TODO: look up label in lookup table
         } else {
+            fprintf(stderr, "error: expected A-Z, got '%s'\n", token);
             return ERROR;
         }
         break;
@@ -393,6 +427,7 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
     case 'E':
     case 'F': {
         if (strlen(token) != 1) {
+            fprintf(stderr, "error: unrecognized register '%s'\n", token);
             return ERROR;
         }
         instr[0] |= (token[0] - 'A') << 8;
@@ -400,6 +435,7 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
     }
     case 'S': {
         if (strlen(token) != 2) {
+            fprintf(stderr, "error: unrecognized register '%s'\n", token);
             return ERROR;
         }
 
@@ -410,6 +446,7 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
         } else if (token[1] == 'P') {
             instr[0] |= REGISTER_SP << 8;
         } else {
+            fprintf(stderr, "error: unrecognized register '%s'\n", token);
             return ERROR;
         }
         break;
@@ -418,12 +455,14 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
         if (strcmp(token, "PC") == 0) {
             instr[0] |= REGISTER_PC << 8;
         } else {
+            fprintf(stderr, "error: unrecognized register '%s'\n", token);
             return ERROR;
         }
         break;
     }
     case 'I': {
         if (strlen(token) != 2) {
+            fprintf(stderr, "error: unrecognized register '%s'\n", token);
             return ERROR;
         }
 
@@ -432,6 +471,7 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
         } else if (token[1] == 'X') {
             instr[0] |= REGISTER_IX << 8;
         } else {
+            fprintf(stderr, "error: unrecognized register '%s'\n", token);
             return ERROR;
         }
         break;
@@ -440,11 +480,13 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
         if (strcmp(token, "TA") == 0) {
             instr[0] |= REGISTER_TA << 8;
         } else {
+            fprintf(stderr, "error: unrecognized register '%s'\n", token);
             return ERROR;
         }
         break;
     }
     default:
+        fprintf(stderr, "error: unrecognized source argument '%s'\n", token);
         return ERROR;
     }
 
@@ -452,8 +494,8 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
 }
 
 memory *assemble(char *prog) {
-    uint8_t *image = calloc(64 * 1024, sizeof(uint8_t));
-    uint8_t *offset = image;
+    memory *m = memory_init(64 * 1024);
+    uint8_t *offset = m->data;
 
     char *delim = "\n\t ";
     char *close = ")";
@@ -482,6 +524,7 @@ memory *assemble(char *prog) {
         }
 
         if (p[length - 1] == ':') {
+            fprintf(stderr, "info: encountered label '%s'\n", p);
             // We encountered a label definition.
             // TODO: Get the current offset in the image and add the label name
             // to the lookup table
@@ -528,11 +571,6 @@ memory *assemble(char *prog) {
         }
 
         if (state == DONE) {
-            // TODO: Push instr into image buffer
-            // printf("%04X\n", instr[0]);
-            // printf("%04X\n", instr[1]);
-            // printf("%04X\n", instr[2]);
-            // printf("----\n");
             uint8_t opcode = instr[0] >> 12;
             uint8_t src = (instr[0] & 0xF00) >> 8;
             uint8_t dst = instr[0] & 0xF;
@@ -617,11 +655,10 @@ memory *assemble(char *prog) {
             state = EXPECT_OP;
         } else if (state == ERROR) {
             // TODO: Print friendly error messages
-            printf("ERROR encountered %s\n", p);
+            fprintf(stderr, "error: encountered unexpected argument '%s'\n", p);
             break;
         }
     }
 
-    memory *m = memory_init(0);
     return m;
 }
