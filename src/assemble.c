@@ -6,6 +6,7 @@
 
 #include "cpu.h"
 #include "memory.h"
+#include "table.h"
 
 typedef enum {
     DONE,
@@ -20,9 +21,9 @@ typedef enum {
 
 static inline ParseState parse_opcode(char *, uint16_t[]);
 static inline ParseState parse_test(char *token, uint16_t instr[]);
-static inline ParseState parse_addr(char *token, uint16_t instr[]);
-static inline ParseState parse_dest(char *token, uint16_t instr[]);
-static inline ParseState parse_src(char *token, uint16_t instr[]);
+static inline ParseState parse_addr(char *token, uint16_t instr[], table *labels);
+static inline ParseState parse_dest(char *token, uint16_t instr[], table *labels);
+static inline ParseState parse_src(char *token, uint16_t instr[], table *labels);
 static inline bool parse_hex(char *token, uint16_t *result);
 static inline bool parse_label(char *token);
 
@@ -94,8 +95,7 @@ static inline ParseState parse_opcode(char *token, uint16_t instr[]) {
 
 static inline ParseState parse_test(char *token, uint16_t instr[]) {
     if (token[1] != '=' || (token[2] != '0' && token[2] != '1')) {
-        fprintf(stderr, "error: encountered unrecognized condition '%s'\n",
-                token);
+        fprintf(stderr, "error: encountered unrecognized condition '%s'\n", token);
         return ERROR;
     }
 
@@ -125,8 +125,7 @@ static inline ParseState parse_test(char *token, uint16_t instr[]) {
         instr[0] |= 0x7;
         break;
     default:
-        fprintf(stderr, "error: encountered unrecognized condition '%s'\n",
-                token);
+        fprintf(stderr, "error: encountered unrecognized condition '%s'\n", token);
         return ERROR;
     }
 
@@ -136,7 +135,7 @@ static inline ParseState parse_test(char *token, uint16_t instr[]) {
     return EXPECT_ADDR;
 }
 
-static inline ParseState parse_addr(char *token, uint16_t instr[]) {
+static inline ParseState parse_addr(char *token, uint16_t instr[], table *labels) {
     uint16_t result = 0;
     size_t len = strlen(token);
 
@@ -167,16 +166,18 @@ static inline ParseState parse_addr(char *token, uint16_t instr[]) {
         }
         break;
     }
-    // case '.': {
-    //     // Label reference
-    //     char *label;
-    //     if (parse_label(&token[1])) {
-    //         // TODO: look up label in lookup table
-    //     } else {
-    //         return ERROR;
-    //     }
-    //     break;
-    // }
+    case '.': {
+        uint16_t addr;
+        bool found = table_scan(labels, &token[1], &addr);
+
+        if (!found) {
+            fprintf(stderr, "error: undefined label '%s'\n", &token[1]);
+            return ERROR;
+        }
+
+        instr[1] |= addr;
+        break;
+    }
     default:
         return ERROR;
     }
@@ -184,7 +185,7 @@ static inline ParseState parse_addr(char *token, uint16_t instr[]) {
     return DONE;
 }
 
-static inline ParseState parse_dest(char *token, uint16_t instr[]) {
+static inline ParseState parse_dest(char *token, uint16_t instr[], table *labels) {
     uint16_t result = 0;
     size_t len = strlen(token);
 
@@ -223,7 +224,15 @@ static inline ParseState parse_dest(char *token, uint16_t instr[]) {
         // Label reference
         char *label;
         if (parse_label(&token[1])) {
-            // TODO: look up label in lookup table
+            uint16_t addr;
+            bool found = table_scan(labels, &token[1], &addr);
+
+            if (!found) {
+                fprintf(stderr, "error: undefined label '%s'\n", &token[1]);
+                return ERROR;
+            }
+
+            instr[2] |= addr;
         } else {
             return ERROR;
         }
@@ -329,7 +338,7 @@ static inline bool parse_label(char *token) {
     return true;
 }
 
-static inline ParseState parse_src(char *token, uint16_t instr[]) {
+static inline ParseState parse_src(char *token, uint16_t instr[], table *labels) {
     uint16_t result = 0;
     size_t len = strlen(token);
 
@@ -342,26 +351,18 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
             if (parse_hex(&token[1], &result)) {
                 instr[1] |= result & 0xF;
             } else {
-                fprintf(
-                    stderr,
-                    "error: expected a hexadecimal int literal, found '%s'\n",
-                    token);
+                fprintf(stderr, "error: expected a hexadecimal int literal, found '%s'\n", token);
                 return ERROR;
             }
         } else if (len == 5) {
             if (parse_hex(&token[1], &result)) {
                 instr[1] |= result;
             } else {
-                fprintf(
-                    stderr,
-                    "error: expected a hexadecimal int literal, found '%s'\n",
-                    token);
+                fprintf(stderr, "error: expected a hexadecimal int literal, found '%s'\n", token);
                 return ERROR;
             }
         } else {
-            fprintf(stderr,
-                    "error: expected either 1 or 4 hex digits, got '%s'\n",
-                    token);
+            fprintf(stderr, "error: expected either 1 or 4 hex digits, got '%s'\n", token);
             return ERROR;
         }
         break;
@@ -374,15 +375,11 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
             if (parse_hex(&token[1], &result)) {
                 instr[1] |= result;
             } else {
-                fprintf(stderr,
-                        "error: expected a hexadecimal address, found '%s'\n",
-                        token);
+                fprintf(stderr, "error: expected a hexadecimal address, found '%s'\n", token);
                 return ERROR;
             }
         } else {
-            fprintf(stderr,
-                    "error: expected 4 hex digits for address, got '%s'\n",
-                    token);
+            fprintf(stderr, "error: expected 4 hex digits for address, got '%s'\n", token);
             return ERROR;
         }
         break;
@@ -395,15 +392,11 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
             if (parse_hex(&token[1], &result)) {
                 instr[1] |= result;
             } else {
-                fprintf(stderr,
-                        "error: expected a hexadecimal address, found '%s'\n",
-                        token);
+                fprintf(stderr, "error: expected a hexadecimal address, found '%s'\n", token);
                 return ERROR;
             }
         } else {
-            fprintf(stderr,
-                    "error: expected 4 hex digits for address, got '%s'\n",
-                    token);
+            fprintf(stderr, "error: expected 4 hex digits for address, got '%s'\n", token);
             return ERROR;
         }
         break;
@@ -412,8 +405,15 @@ static inline ParseState parse_src(char *token, uint16_t instr[]) {
         // Label reference
         char *label;
         if (parse_label(&token[1])) {
-            fprintf(stderr, "info: label '%s'\n", token);
-            // TODO: look up label in lookup table
+            uint16_t addr;
+            bool found = table_scan(labels, &token[1], &addr);
+
+            if (!found) {
+                fprintf(stderr, "error: undefined label '%s'\n", &token[1]);
+                return ERROR;
+            }
+
+            instr[1] |= addr;
         } else {
             fprintf(stderr, "error: expected A-Z, got '%s'\n", token);
             return ERROR;
@@ -497,6 +497,9 @@ memory *assemble(char *prog) {
     memory *m = memory_init(64 * 1024);
     uint8_t *offset = m->data;
 
+    table *labels = table_init(1024);
+    // table *refs = table_init(1024);
+
     char *delim = "\n\t ";
     char *close = ")";
     char *sep = delim;
@@ -524,10 +527,8 @@ memory *assemble(char *prog) {
         }
 
         if (p[length - 1] == ':') {
-            fprintf(stderr, "info: encountered label '%s'\n", p);
-            // We encountered a label definition.
-            // TODO: Get the current offset in the image and add the label name
-            // to the lookup table
+            p[length - 1] = '\0';
+            table_insert(labels, p, offset - m->data);
             continue;
         }
 
@@ -541,19 +542,19 @@ memory *assemble(char *prog) {
             break;
         }
         case EXPECT_ADDR: {
-            state = parse_addr(p, instr);
+            state = parse_addr(p, instr, labels);
             break;
         }
         case EXPECT_DST: {
-            state = parse_dest(p, instr);
+            state = parse_dest(p, instr, labels);
             break;
         }
         case EXPECT_OP_SRC: {
-            state = parse_src(p, instr);
+            state = parse_src(p, instr, labels);
             break;
         }
         case EXPECT_PSH_SRC: {
-            if (parse_src(p, instr) != ERROR) {
+            if (parse_src(p, instr, labels) != ERROR) {
                 // The parse_src function sets the parse state to EXPECT_DST,
                 // which is the wrong state after parsing the source of a PSH
                 // instruction. We set the state to DONE if we did not encounter
@@ -654,9 +655,15 @@ memory *assemble(char *prog) {
 
             state = EXPECT_OP;
         } else if (state == ERROR) {
-            // TODO: Print friendly error messages
             fprintf(stderr, "error: encountered unexpected argument '%s'\n", p);
             break;
+        }
+    }
+
+    printf("info: found the following labels\n");
+    for (size_t i = 0; i < labels->last; i++) {
+        if (labels->labels[1]) {
+            printf("  %s:%hu\n", labels->labels[i], labels->addrs[i]);
         }
     }
 

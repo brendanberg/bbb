@@ -12,19 +12,12 @@
 
 int bbb_assemble(FILE *source, FILE *image) {
     if (fseek(source, 0L, SEEK_END) != 0) {
-        fputs("blah", stderr);
+        fprintf(stderr, "error: unable to determine source file size\n");
         return EXIT_FAILURE;
     }
 
     size_t src_size = ftell(source);
     fseek(source, 0L, SEEK_SET);
-
-    if (fseek(image, 0L, SEEK_END) != 0) {
-        fputs("blah", stderr);
-        return EXIT_FAILURE;
-    }
-
-    size_t img_size = ftell(image);
     fseek(image, 0L, SEEK_SET);
 
     char *prog = calloc(src_size + 1, sizeof(char));
@@ -39,14 +32,14 @@ int bbb_assemble(FILE *source, FILE *image) {
 
 int bbb_run(FILE *image) {
     if (fseek(image, 0L, SEEK_END) != 0) {
-        fputs("blah", stderr);
+        fprintf(stderr, "error: unable to determine image size\n");
         return EXIT_FAILURE;
     }
 
     size_t img_size = ftell(image);
 
-    if (img_size >= MAX_ADDRESS) {
-        fputs("blah", stderr);
+    if (img_size > MAX_ADDRESS) {
+        fprintf(stderr, "error: machine image is too big\n");
         return EXIT_FAILURE;
     }
 
@@ -74,6 +67,16 @@ int main(int argc, char *argsv[]) {
         FILE *source = fopen(src_path, "r");
         FILE *image = fopen(image_path, "wb");
 
+        if (!source) {
+            fprintf(stderr, "error: could not open source file for reading");
+            return EXIT_FAILURE;
+        }
+
+        if (!image) {
+            fprintf(stderr, "error: could not open image file for writing");
+            return EXIT_FAILURE;
+        }
+
         status = bbb_assemble(source, image);
 
         fclose(source);
@@ -85,6 +88,10 @@ int main(int argc, char *argsv[]) {
         // TODO: validate image path
         FILE *image = fopen(image_path, "rb");
 
+        if (!image) {
+            fprintf(stderr, "error: could not open the image file for reading");
+            return EXIT_FAILURE;
+        }
         status = bbb_run(image);
 
         fclose(image);

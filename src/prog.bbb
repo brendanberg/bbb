@@ -4,9 +4,9 @@
      ADD A B
 FOO: (0x000B)
      DEC B
-     JMP Z=0 (@000B) .FOO
+     JMP Z=0 .FOO
 
-(LOOP: 0x0013 19) 
+LOOP: (0x0013) 
      MOV @FFF0 C
      MOV @FFF1 D
      MOV @FFF2 E
@@ -19,8 +19,8 @@ FOO: (0x000B)
      JMP Z=0 @005D (.HALT)
      CMP #0 F
      JMP Z=0 @005D (.HALT)
-     JMP Z=1 @0013 (.LOOP)
-(HALT: 0x005D)
+     JMP Z=1 .LOOP
+HALT: (0x005D)
      OR #2 S1
 
 
