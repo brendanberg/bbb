@@ -2,8 +2,9 @@
 #define BBB_CPU_H
 
 #include <stdint.h>
-
 #include "memory.h"
+
+#define CPU_MAX_ADDRESS 64 * 1024
 
 typedef enum { STATE_RUN, STATE_HALT } MachineState;
 
@@ -53,7 +54,7 @@ typedef struct machine {
     // - The status registers S0 and S2 are stored as the high and low
     // nibbles of the flags byte.
     MachineState status;
-    uint8_t registers[8]; // TODO: Find out why there are 8
+    uint8_t registers[8];  // TODO: Find out why there are 8
     uint8_t flags;
 
     // The pc, sp, iv, ix, and ta registers are all pointers into memory.

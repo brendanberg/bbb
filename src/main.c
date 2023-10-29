@@ -26,6 +26,7 @@ int bbb_assemble(FILE *source, FILE *image) {
 
     fwrite(mem->data, mem->size, 1, image);
     fflush(image);
+    free(prog);
 
     return EXIT_SUCCESS;
 }
