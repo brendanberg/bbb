@@ -46,8 +46,8 @@ char **registers = {"a",  "b",  "c",  "d",  "e",  "f", "s0",
 static inline ParseState parse_opcode(asm_state *, char *);
 static inline ParseState parse_test(asm_state *, char *);
 static inline ParseState parse_addr(asm_state *, char *, uint16_t *);
-static inline ParseState parse_dest(char *token, uint16_t instr[], table *labels);
-static inline ParseState parse_src(char *token, uint16_t instr[], table *labels);
+static inline ParseState parse_dest(asm_state *, char *, uint16_t *);
+static inline ParseState parse_src(asm_state *, char *, uint16_t *);
 static inline bool parse_hex(char *, uint8_t, uint16_t *);
 static inline bool parse_label(char *token);
 
@@ -160,7 +160,7 @@ void tokenize(asm_state *state, char *line, uint16_t num) {
 
     if (st != DONE) {
         fprintf(stderr, "error: unable to parse line");
-        }
+    }
 }
 
 ParseState *next_state = {DONE,          EXPECT_DST,    EXPECT_DST,    EXPECT_OP_SRC,
