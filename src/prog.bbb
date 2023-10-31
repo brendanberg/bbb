@@ -1,28 +1,29 @@
 
-     MOV #4 A
-     MOV #9 B
-     ADD A B
-FOO: (0x000B)
-     DEC B
-     JMP Z=0 .FOO
+
+     MOV %f %a       (F50) (0)
+     MOV %a %b       (F01)
+     ADD %a %b       (301)
+START:
+     DEC %b          (21)
+     MOV %a @A5A5    (F0EA5A5)
+     JMP Z=0 .START  (D1000A)
 
 LOOP: (0x0013) 
-     MOV @FFF0 C
-     MOV @FFF1 D
-     MOV @FFF2 E
-     MOV @FFF3 F
-     CMP #0 C
-     JMP Z=0 @005D (.HALT)
-     CMP #0 D
-     JMP Z=0 @005D (.HALT)
-     CMP #0 E
-     JMP Z=0 @005D (.HALT)
-     CMP #0 F
-     JMP Z=0 @005D (.HALT)
-     JMP Z=1 .LOOP
+     MOV @FFF0 %c    (FE20) (?)
+     MOV @FFF1 %d    (FE30) (?)
+     MOV @FFF2 %e    (FE40) (?)
+     MOV @FFF3 %f    (FE50) (?)
+     CMP 0 %c        (AD20) (0000)
+     JMP Z=0 .HALT   (D10067)
+     CMP 0 %d        (AD30) (0000)
+     JMP Z=0 .HALT   (D10067)
+     CMP 0 %e        (AD40) (0000)
+     JMP Z=0 .HALT   (D10067)
+     CMP 0 %f        (AD50) (0000)
+     JMP Z=0 .HALT   (D10067)
+     JMP Z=1 .LOOP   (D90019)
 HALT: (0x005D)
-     OR #2 S1
-
+     OR 2 %s1        (8D72)
 
 (INT:)
      (Read keyboard values from 0xFFF0 through 0xFFF3)

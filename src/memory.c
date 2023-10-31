@@ -8,7 +8,7 @@
 memory *memory_init(size_t size) {
     memory *mem = malloc(sizeof(memory));
     mem->size = size;
-    mem->data = malloc(size * sizeof(uint8_t));
+    mem->data = calloc(size, sizeof(uint8_t));
     return mem;
 }
 
@@ -40,8 +40,7 @@ bool memory_write(memory *mem, size_t address, uint8_t value) {
     return true;
 };
 
-bool memory_write_indexed(memory *mem, uint8_t *index, size_t offset,
-                          uint8_t value) {
+bool memory_write_indexed(memory *mem, uint8_t *index, size_t offset, uint8_t value) {
     // TODO: The pointer math here is very likely wrong...
     size_t address = (index - mem->data) + offset;
 

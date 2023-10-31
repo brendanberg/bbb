@@ -5,26 +5,42 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct sym_ref {
-    size_t offset;
-    size_t index;
-}
+typedef struct symbol {
+    char *label;
+    size_t address;
+} symbol;
+
+typedef struct reference {
+    uint8_t *offset;
+    char *label;
+} reference;
 
 typedef struct table {
-    size_t size;
-    size_t last;
-    char **labels;
-    uint16_t *addrs;
+    symbol *syms;
+    symbol *syms_end;
+    size_t syms_length;
 
-    sym_ref *references;
+    reference *refs;
+    reference *refs_end;
+    size_t refs_length;
+
+    char *labels;
+    char *labels_end;
+    size_t labels_length;
 } table;
 
-table *table_init(size_t size);
-void table_insert(table *t, char *label, uint16_t addr);
-bool table_scan(table *t, char *label, uint16_t *result);
-void table_del(table *t, char *label);
-void table_add_ref(table *t, char *label, size_t offset);
-size_t *table_reference_list(table *t);
-void table_get_ref void table_free(table *t);
+table *table_init();
+
+void table_symbol_define(table *t, char *label, size_t addr);
+symbol *table_symbol_lookup(table *t, char *label);
+void table_symbol_del(table *t, char *label);
+
+void table_ref_push(table *t, reference *r);
+reference *table_ref_pop(table *t);
+void table_ref_add(table *t, char *label, uint8_t *offset);
+
+void table_print(table *t);
+
+void table_free(table *t);
 
 #endif

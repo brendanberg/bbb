@@ -2,83 +2,184 @@
 
 #include <memory.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 
-table *table_init(size_t size) {
+#define SYMS_LENGTH 64
+#define REFS_LENGTH 128
+#define LABELS_LENGTH 1024
+
+table *table_init() {
     table *t = calloc(1, sizeof(table));
-    t->size = size;
-    t->last = 0;
-    t->labels = calloc(size, sizeof(char *));
-    t->addrs = calloc(size, sizeof(uint16_t));
+
+    t->syms_length = SYMS_LENGTH;
+    t->syms = calloc(SYMS_LENGTH, sizeof(symbol));
+    t->syms_end = t->syms;
+
+    t->refs_length = REFS_LENGTH;
+    t->refs = calloc(REFS_LENGTH, sizeof(reference));
+    t->refs_end = t->refs;
+
+    t->labels_length = LABELS_LENGTH;
+    t->labels = calloc(LABELS_LENGTH, sizeof(char));
+    t->labels_end = t->labels;
 
     return t;
 }
 
-bool table_resize(table *t, size_t size) {
-    if (size <= t->size) {
-        return false;
+void table_resize_syms(table *t, size_t offset) {
+    t->syms = realloc(t->syms, t->syms_length * 2);
+
+    if (!t->syms) {
+        fprintf(stderr, "error: could not allocate storage");
+        exit(EXIT_FAILURE);
     }
 
-    char **labels = calloc(size, sizeof(char *));
-    uint16_t *addrs = calloc(size, sizeof(uint16_t));
-
-    memcpy(labels, t->labels, t->size);
-    memcpy(addrs, t->addrs, t->size);
-
-    free(t->labels);
-    free(t->addrs);
-
-    t->labels = labels;
-    t->addrs = addrs;
-
-    return true;
+    t->syms_end = t->syms + offset;
 }
 
-void table_insert(table *t, char *label, uint16_t addr) {
-    if (t->last == t->size - 1) {
-        table_resize(t, t->size * 2);
+void table_resize_refs(table *t, size_t offset) {
+    t->refs = realloc(t->refs, t->refs_length * 2);
+
+    if (!t->refs) {
+        fprintf(stderr, "error: could not allocate storage");
+        exit(EXIT_FAILURE);
     }
 
-    char *insert = calloc(strlen(label) + 1, sizeof(char));
-    memcpy(insert, label, strlen(label));
-
-    t->labels[t->last] = insert;
-    t->addrs[t->last] = addr;
-    t->last += 1;
-
-    return;
+    t->refs_end = t->refs + offset;
 }
 
-bool table_scan(table *t, char *label, uint16_t *result) {
-    for (size_t i = 0; i < t->size; i++) {
-        if (t->labels[i] && strcmp(label, t->labels[i]) == 0) {
-            *result = i;
-            return true;
+void table_resize_labels(table *t, size_t offset) {
+    t->labels = realloc(t->labels, t->labels_length * 2);
+
+    if (!t->labels) {
+        fprintf(stderr, "error: could not allocate storage");
+        exit(EXIT_FAILURE);
+    }
+
+    t->labels_end = t->labels + offset;
+}
+
+char *table_label_find(table *t, char *label) {
+    for (char *l = t->labels; l < t->labels_end; l += strlen(l) + 1) {
+        if (strcmp(l, label) == 0) {
+            return l;
         }
     }
 
-    return false;
+    return NULL;
 }
 
-void table_del(table *t, char *label) {
-    uint16_t index;
-    bool found = table_scan(t, label, &index);
+char *table_label_push(table *t, char *label) {
+    size_t len = strlen(label);
+    size_t offset = t->labels_end - t->labels;
 
-    if (!found) {
-        return;
+    if (offset + len > t->labels_length) {
+        table_resize_labels(t, offset);
     }
 
-    free(t->labels[index]);
-    t->labels[index] = NULL;
+    char *label_start = t->labels_end;
+    t->labels_end = stpcpy(t->labels_end, label) + 1;
+    return label_start;
+}
+
+void table_symbol_push(table *t, symbol *s) {
+    size_t offset = t->syms_end - t->syms;
+
+    if (offset >= t->syms_length) {
+        table_resize_syms(t, offset);
+    }
+
+    memcpy(t->syms_end, s, sizeof(symbol));
+    t->syms_end += sizeof(symbol);
+}
+
+void table_ref_push(table *t, reference *r) {
+    size_t offset = t->refs_end - t->refs;
+
+    if (offset >= t->refs_length) {
+        table_resize_refs(t, offset);
+    }
+
+    memcpy(t->refs_end, r, sizeof(reference));
+    t->refs_end += sizeof(reference);
+}
+
+reference *table_ref_pop(table *t) {
+    reference *r = t->refs_end -= sizeof(reference);
+    return r >= t->refs ? r : NULL;
+}
+
+void table_ref_add(table *t, char *label, uint8_t *offset) {
+    char *loc = table_label_find(t, label);
+
+    if (!loc) {
+        loc = table_label_push(t, label);
+    }
+
+    reference r = {.offset = offset, .label = loc};
+    table_ref_push(t, &r);
+}
+
+void table_symbol_define(table *t, char *label, size_t addr) {
+    char *loc = table_label_find(t, label);
+
+    if (!loc) {
+        loc = table_label_push(t, label);
+    }
+
+    symbol s = {.label = loc, .address = addr};
+    table_symbol_push(t, &s);
+}
+
+symbol *table_symbol_lookup(table *t, char *label) {
+    char *loc = table_label_find(t, label);
+
+    for (symbol *s = t->syms; s < t->syms_end; s += sizeof(symbol)) {
+        if (s && s->label == loc) {
+            return s;
+        }
+    }
+
+    return NULL;
+}
+
+void table_symbol_del(table *t, char *label) {
+    char *loc = table_label_find(t, label);
+
+    for (symbol *s = t->syms; s < t->syms_end; s += sizeof(symbol)) {
+        if (s && s->label == loc) {
+            s->label = NULL;
+            return;
+        }
+    }
+}
+
+void table_print(table *t) {
+    printf("SYMBOLS\n-------\n");
+    for (symbol *s = t->syms; s < t->syms_end; s += sizeof(symbol)) {
+        if (s->label) {
+            printf("%s: %zu\n", s->label, s->address);
+        }
+    }
+
+    printf("\nREFERENCES\n----------\n");
+    for (reference *r = t->refs; r < t->refs_end; r += sizeof(reference)) {
+        if (r->label) {
+            printf("%s: %p\n", r->label, r->offset);
+        }
+    }
+
+    printf("\nLABELS\n------\n");
+    for (char *l = t->labels; l < t->labels_end - 1; l += strlen(l) + 1) {
+        printf("%s%s", l == t->labels ? "" : ", ", l);
+    }
+    printf("\n");
 }
 
 void table_free(table *t) {
-    for (size_t i = 0; i < t->size; i++) {
-        if (t->labels[i]) {
-            free(t->labels[i]);
-        }
-    }
+    free(t->syms);
+    free(t->refs);
     free(t->labels);
-    free(t->addrs);
     free(t);
 }
