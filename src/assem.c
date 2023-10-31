@@ -1,15 +1,14 @@
 #include "assem.h"
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "cpu.h"
 #include "memory.h"
 #include "table.h"
 
 #define OPCODE_COUNT 16
 #define REGISTER_COUNT 13
+#define DIRECTIVE_COUNT 2
 
 typedef enum ParseState {
     PARSE_OPER,
@@ -18,16 +17,20 @@ typedef enum ParseState {
     PARSE_DEST,
     PARSE_OPER_SRC,
     PARSE_PUSH_SRC,
+    PARSE_ORG_ADDR,
+    PARSE_DATA,
     PARSE_DONE,
-    PARSE_ERROR
+    PARSE_ERROR = 0xFF
 } ParseState;
 
-#define MASK_PARSE_STATE 0x000F
-#define MASK_SRC_EXT 0x0C00
-#define MASK_DST_EXT 0x00C0
-#define MASK_DST_REGISTER 0x00F0
-#define OFFSET_SRC 8
-#define OFFSET_DEST 4
+typedef enum { META_ORG, META_DATA, META_ERROR } MetaDirective;
+
+#define OFFSET_SRC 12
+#define OFFSET_DEST 8
+
+#define MASK_SRC_REGISTER 0xF000
+#define MASK_DST_REGISTER 0x0F00
+#define MASK_PARSE_STATE 0x00FF
 
 #define DATA_OFFSET(ctx) ((ctx)->data - (ctx)->data_start)
 
@@ -39,7 +42,6 @@ ParseState next_state[OPCODE_COUNT] = {
 typedef struct context {
     uint8_t *data_start;
     uint8_t *data;
-    size_t offset;
     table *symbols;
     uint32_t line;
 } context;
@@ -52,6 +54,8 @@ char *registers[REGISTER_COUNT] = {"a",  "b",  "c",  "d",  "e",  "f", "s0",
 // The CV, MD, and MX virtual registers are missing from this table
 // because they cannot be used in register specifiers.
 
+char *directives[DIRECTIVE_COUNT] = {"org", "data"};
+
 #define PUSH_NEXT(m, v) (*(m)++ = (v))
 
 #define PUSH_QUARTET(m, v)           \
@@ -62,8 +66,9 @@ char *registers[REGISTER_COUNT] = {"a",  "b",  "c",  "d",  "e",  "f", "s0",
         *(m)++ = ((v)&0xF);          \
     } while (0)
 
-#define UPDATE_STATE(st, v) (((st) & ~MASK_PARSE_STATE) | (v))
+#define UPDATE_STATE(st, v) ((st) & ~MASK_PARSE_STATE | (v))
 
+static inline ParseState parse_directive(context *, char *);
 static inline ParseState parse_opcode(context *, char *);
 static inline ParseState parse_condition(context *, char *);
 static inline ParseState parse_dest(context *, char *, uint16_t *, char **);
@@ -80,8 +85,7 @@ memory *build_image(char *filename, char *prog) {
     memory *mem = memory_init(CPU_MAX_ADDRESS);
     table *symbols = table_init();
 
-    context ctx = {
-        .data_start = mem->data, .data = mem->data, .offset = 0, .symbols = symbols, .line = 0};
+    context ctx = {.data_start = mem->data, .data = mem->data, .symbols = symbols, .line = 0};
 
     for (char *l = strsep(&prog, "\n"); l != NULL; l = strsep(&prog, "\n")) {
         char *line = strdup(l);
@@ -92,17 +96,7 @@ memory *build_image(char *filename, char *prog) {
         free(line);
     }
 
-    for (size_t i = 0; i < 128; i++) {
-        printf("%0X", mem->data[i]);
-
-        if (i % 16 == 15) {
-            printf("\n");
-        } else if (i % 4 == 3) {
-            printf(" ");
-        }
-    }
-
-    // table_print(symbols);
+    table_print(symbols);
 
     for (reference *r = table_ref_pop(symbols); r != NULL; r = table_ref_pop(symbols)) {
         symbol *s = table_symbol_lookup(symbols, r->label);
@@ -119,13 +113,17 @@ memory *build_image(char *filename, char *prog) {
         }
     }
 
-    printf("-------------------\n");
+    printf("\nIMAGE\n-------------------  -------------------\n");
 
-    for (size_t i = 0; i < 128; i++) {
+    size_t len = ctx.data - mem->data;
+
+    for (size_t i = 0; i < 512; i++) {
         printf("%0X", mem->data[i]);
 
-        if (i % 16 == 15) {
+        if (i % 32 == 31) {
             printf("\n");
+        } else if (i % 16 == 15) {
+            printf("  ");
         } else if (i % 4 == 3) {
             printf(" ");
         }
@@ -169,6 +167,17 @@ bool tokenize(context *ctx, char *line, uint16_t num) {
             continue;
         }
 
+        if (t[0] == '#') {
+            // Assembler directives start with '#' and should be the first token on a line.
+            if ((st & MASK_PARSE_STATE) != PARSE_OPER) {
+                fprintf(stderr, "error: didn't expect an assembler directive here\n");
+                return false;
+            }
+
+            st = UPDATE_STATE(st, parse_directive(ctx, &t[1]));
+            continue;
+        }
+
         if (t[length - 1] == ':') {
             t[length - 1] = '\0';
             table_symbol_define(ctx->symbols, t, DATA_OFFSET(ctx));
@@ -186,7 +195,7 @@ bool tokenize(context *ctx, char *line, uint16_t num) {
         }
         case PARSE_ADDR: {
             if (parse_addr(ctx, t, &dst_ext, &dst_label)) {
-                st = UPDATE_STATE(st, PARSE_DONE | MASK_DST_EXT);
+                st = UPDATE_STATE(st, PARSE_DONE | (REGISTER_MD << OFFSET_DEST));
             } else {
                 fprintf(stderr, "error: expected address, found '%s'\n", t);
             }
@@ -207,6 +216,34 @@ bool tokenize(context *ctx, char *line, uint16_t num) {
             }
             break;
         }
+        case PARSE_ORG_ADDR: {
+            uint16_t offset = 0;
+
+            if (parse_hex(t, 4, &offset)) {
+                ctx->data = ctx->data_start + offset;
+                st = UPDATE_STATE(st, PARSE_DONE);
+            } else {
+                fprintf(stderr, "error: expected address, found '%s'\n", t);
+            }
+
+            break;
+        }
+        case PARSE_DATA: {
+            uint16_t data = 0;
+
+            if (parse_hex(t, 1, &data)) {
+                PUSH_NEXT(ctx->data, data & 0xF);
+            } else if (parse_hex(t, 2, &data)) {
+                PUSH_NEXT(ctx->data, data & 0xF);
+                PUSH_NEXT(ctx->data, data >> 2 & 0xF);
+            } else if (parse_hex(t, 4, &data)) {
+                PUSH_QUARTET(ctx->data, data);
+            } else {
+                fprintf(stderr, "error: expected address, found '%s'\n", t);
+            }
+
+            break;
+        }
         default:
             break;
         }
@@ -217,32 +254,64 @@ bool tokenize(context *ctx, char *line, uint16_t num) {
         }
 
         if ((st & MASK_PARSE_STATE) == PARSE_DONE) {
-            if ((st & MASK_SRC_EXT) && (st & MASK_DST_REGISTER) <= 0x70) {
+            int virt_register_mask = (REGISTER_CV & REGISTER_MD & REGISTER_MX);
+            uint8_t source = (st & MASK_SRC_REGISTER) >> OFFSET_SRC;
+            uint8_t dest = (st & MASK_DST_REGISTER) >> OFFSET_DEST;
+
+            if ((source & virt_register_mask) == virt_register_mask) {
                 if (src_label) {
                     table_ref_add(ctx->symbols, src_label, ctx->data);
                 }
-                PUSH_NEXT(ctx->data, src_ext & 0xF);
-            } else if (st & MASK_SRC_EXT) {
-                if (src_label) {
-                    table_ref_add(ctx->symbols, src_label, ctx->data);
+
+                if (source == REGISTER_CV && dest < REGISTER_PC) {
+                    // We only want to push one word of data when a constant value's destination
+                    // is a 4-bit general purpose register.
+                    PUSH_NEXT(ctx->data, src_ext & 0xF);
+                } else {
+                    // In all other cases, we push four words of data.
+                    PUSH_QUARTET(ctx->data, src_ext);
                 }
-                PUSH_QUARTET(ctx->data, src_ext);
             }
 
-            if (st & MASK_DST_EXT) {
+            if ((dest & virt_register_mask) == virt_register_mask) {
                 if (dst_label) {
                     table_ref_add(ctx->symbols, dst_label, ctx->data);
                 }
+
                 PUSH_QUARTET(ctx->data, dst_ext);
             }
         }
     }
 
-    if ((st & MASK_PARSE_STATE) == PARSE_OPER || (st & MASK_PARSE_STATE) == PARSE_DONE) {
+    int state = st & MASK_PARSE_STATE;
+
+    if (state == PARSE_OPER || state == PARSE_DONE || state == PARSE_DATA) {
         return true;
     }
 
     return false;
+}
+
+static inline ParseState parse_directive(context *ctx, char *token) {
+    MetaDirective dir = META_ERROR;
+
+    for (size_t i = 0; i < DIRECTIVE_COUNT; i++) {
+        if (strcmp(token, directives[i]) == 0) {
+            dir = i;
+            break;
+        }
+    }
+
+    switch (dir) {
+    case META_ORG:
+        return PARSE_ORG_ADDR;
+    case META_DATA:
+        return PARSE_DATA;
+    case META_ERROR:
+    default:
+        fprintf(stderr, "error: unrecognized assembler directive '%s'\n", token);
+        return PARSE_ERROR;
+    }
 }
 
 static inline ParseState parse_opcode(context *ctx, char *token) {
