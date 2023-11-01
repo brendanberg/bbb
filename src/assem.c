@@ -1,7 +1,9 @@
 #include "assem.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "cpu.h"
 #include "memory.h"
 #include "table.h"
