@@ -1,5 +1,0 @@
-
-
-MOV 4, #A
-MOV 9 #B
-ADD #A #B

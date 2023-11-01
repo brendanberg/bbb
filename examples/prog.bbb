@@ -1,0 +1,30 @@
+#data 0020 1000 00A0
+
+#org 0020
+     MOV 9 %a        (FD09)
+     MOV 4 %b        (FD14)
+     ADD %a %b       (301)
+START:
+     DEC %b          (21)
+     MOV %a @A5A5    (F0EA5A5)
+     JMP Z=0 .START  (D1000B)
+
+#org 00A0
+INT:
+     MOV @FFF0 %c    (FE2FFF0)
+     MOV @FFF1 %d    (FE3FFF1)
+     MOV @FFF2 %e    (FE4FFF2)
+     MOV @FFF3 %f    (FE5FFF3)
+     CMP 0 %c        (AD20)
+     JMP Z=0 .HALT   (D10064)
+     CMP 0 %d        (AD30)
+     JMP Z=0 .HALT   (D10064)
+     CMP 0 %e        (AD40)
+     JMP Z=0 .HALT   (D10064)
+     CMP 0 %f        (AD50)
+     JMP Z=0 .HALT   (D10064)
+     JMP Z=1 .INT   (D9001A)
+HALT: (0x005D)
+     AND 0xE %s1
+     OR 2 %s1        (8D72)
+     (Read keyboard values from 0xFFF0 through 0xFFF3)

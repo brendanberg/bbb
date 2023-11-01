@@ -1,16 +1,14 @@
-#include <termios.h>
-#include <curses.h>
-#include <unistd.h>
-#include <stdlib.h>
-
 #include "io.h"
 
+#include <curses.h>
+#include <stdlib.h>
+#include <termios.h>
+#include <unistd.h>
 
 struct termios term_orig;
 
-void kbio_teardown() {
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &term_orig);
-}
+void kbio_teardown() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &term_orig); }
+
 void kbio_setup() {
     tcgetattr(STDIN_FILENO, &term_orig);
     atexit(kbio_teardown);
@@ -25,7 +23,7 @@ void kbio_setup() {
 uint16_t kbio_get_keymap() {
     uint16_t map = 0;
     char c;
-    
+
     while (read(STDIN_FILENO, &c, 1) == 1) {
         switch (c) {
         case '0':
@@ -81,7 +79,7 @@ uint16_t kbio_get_keymap() {
         case 'f':
         case 'F':
             map |= 0x8000;
-            break;        
+            break;
         }
     }
 
