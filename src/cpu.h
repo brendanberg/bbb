@@ -54,7 +54,7 @@ typedef struct machine {
     // - The status registers S0 and S2 are stored as the high and low
     // nibbles of the flags byte.
     MachineState status;
-    uint8_t registers[8];  // TODO: Find out why there are 8
+    uint8_t registers[6];  // TODO: Find out why there are 8
     uint8_t flags;
 
     // The pc, sp, iv, ix, and ta registers are all pointers into memory.
@@ -72,6 +72,9 @@ typedef struct machine {
     Register dst;
     uint16_t src_ext;
     uint16_t dst_ext;
+
+    // Internal state for interrupt masking
+    bool int_mask;
 
     // And finally, a pointer to the machine's memory.
     memory *memory;

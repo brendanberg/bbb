@@ -96,7 +96,7 @@ memory *build_image(char *filename, char *prog) {
         free(line);
     }
 
-    table_print(symbols);
+    // table_print(symbols);
 
     for (reference *r = table_ref_pop(symbols); r != NULL; r = table_ref_pop(symbols)) {
         symbol *s = table_symbol_lookup(symbols, r->label);
@@ -113,9 +113,9 @@ memory *build_image(char *filename, char *prog) {
         }
     }
 
-    printf("\nIMAGE\n-------------------  -------------------\n");
+    // printf("\nIMAGE\n-------------------  -------------------\n");
 
-    size_t len = ctx.data - mem->data;
+    // size_t len = ctx.data - mem->data;
 
     for (size_t i = 0; i < 512; i++) {
         printf("%0X", mem->data[i]);
@@ -484,10 +484,10 @@ static inline bool parse_int(char *token, uint16_t *result) {
 }
 
 static inline bool parse_label(char *token) {
-    // Parsing a label involves validating the characters and then scanning the label list for the
-    // current label. If the label is found, we set the result value to the pointer into the label
-    // list. If the label is not found, we add the label and return the pointer to the newly added
-    // label.
+    // Parsing a label involves validating the characters and then scanning the label list for
+    // the current label. If the label is found, we set the result value to the pointer into the
+    // label list. If the label is not found, we add the label and return the pointer to the
+    // newly added label.
 
     for (char *ch = token; *ch != 0; ch++) {
         if (!((*ch >= 'A' && *ch <= 'Z') || (*ch >= 'a' && *ch <= 'z') || (*ch == '_'))) {
