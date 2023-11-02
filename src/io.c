@@ -1,5 +1,4 @@
 #include "io.h"
-
 #include <curses.h>
 #include <stdlib.h>
 #include <termios.h>
@@ -20,7 +19,7 @@ void kbio_setup() {
     tcsetattr(STDIN_FILENO, TCSANOW, &term);
 }
 
-uint16_t kbio_get_keymap() {
+uint16_t kbio_get_keymap(char *meta) {
     uint16_t map = 0;
     char c;
 
@@ -79,6 +78,9 @@ uint16_t kbio_get_keymap() {
         case 'f':
         case 'F':
             map |= 0x8000;
+            break;
+        case 'q':
+            *meta = 'q';
             break;
         }
     }

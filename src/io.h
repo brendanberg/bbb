@@ -3,8 +3,7 @@
 
 #include <stdint.h>
 
-
 void kbio_setup();
-uint16_t kbio_get_keymap();
+uint16_t kbio_get_keymap(char *);
 
 #endif

@@ -1,30 +1,62 @@
 #data 0020 1000 00A0
 
 #org 0020
-     MOV 9 %a        (FD09)
-     MOV 4 %b        (FD14)
-     ADD %a %b       (301)
-START:
-     DEC %b          (21)
-     MOV %a @A5A5    (F0EA5A5)
-     JMP Z=0 .START  (D1000B)
+     MOV 1 %a
+FIBONACCI:
+     MOV %a @F00C
+     MOV %b @F00D
+     MOV %c @F00E
+     MOV %d @F00F
+     
+     ADD @F00F %d
+     ADD @F00E %c
+     ADD @F00D %b
+     ADD @F00C %a
+
+     JMP 0=0 .FIBONACCI
+     OR 2 %s1
+
 
 #org 00A0
+     MOV 12 %a
+     MOV 10 %b
+     MOV 15 %c
+     MOV 14 %d
+
+     AND 0 %s1
+     OR 2 %s1
+     POP %pc
+
+#org 0A00
 INT:
+     PSH %c
+     PSH %d
+     PSH %e
+     PSH %f
+LOOP:
      MOV @FFF0 %c    (FE2FFF0)
      MOV @FFF1 %d    (FE3FFF1)
      MOV @FFF2 %e    (FE4FFF2)
      MOV @FFF3 %f    (FE5FFF3)
      CMP 0 %c        (AD20)
-     JMP Z=0 .HALT   (D10064)
+     JMP Z=0 .END    (D10064)
      CMP 0 %d        (AD30)
-     JMP Z=0 .HALT   (D10064)
+     JMP Z=0 .END    (D10064)
      CMP 0 %e        (AD40)
-     JMP Z=0 .HALT   (D10064)
+     JMP Z=0 .END    (D10064)
      CMP 0 %f        (AD50)
-     JMP Z=0 .HALT   (D10064)
-     JMP Z=1 .INT   (D9001A)
-HALT: (0x005D)
+     JMP Z=0 .END    (D10064)
+     JMP Z=1 .LOOP   (D9001A)
+END:
+     POP %f
+     POP %e
+     POP %d
+     POP %c
+     OR 0x2 %s1
      AND 0xE %s1
-     OR 2 %s1        (8D72)
+     POP %pc
+
+(HALT:)
+     (AND 0xE %s1)
+     (OR 2 %s1)
      (Read keyboard values from 0xFFF0 through 0xFFF3)

@@ -9,7 +9,7 @@
 uint16_t prev_keymap = 0;
 
 #define READ_NEXT(x) (*(x)++)
-#define READ_QUARTET(x) (*(x)++ | *(x)++ << 4 | *(x)++ << 8 | *(x)++ << 12)
+#define READ_QUARTET(x) (*(x)++ << 12 | *(x)++ << 8 | *(x)++ << 4 | *(x)++)
 
 #define SET_HALT(x) ((x) |= 0x20)
 #define SET_CMP(x, lhs, rhs) ((x) = ((x)&0xFC) | (((lhs) == (rhs)) << 1) | ((lhs) > (rhs)))
@@ -19,6 +19,8 @@ uint16_t prev_keymap = 0;
 static inline void machine_instr_fetch(machine *m);
 static inline void machine_instr_decode(machine *m);
 static inline void machine_instr_execute(machine *m);
+
+static inline void machine_interrupt_check(machine *m);
 
 static inline uint16_t machine_get_value(machine *m, Register src, uint16_t src_ext) {
     switch (src) {
@@ -141,10 +143,30 @@ void machine_show(machine *m) {
     printf(E385(13m) "║\r\n");
     printf("╠═════════╤═══╧════════╧══════════════════════════════╣\r\n");
 
-    printf("║ . . . . │                                           ║\r\n");
-    printf("║ . . . . │                                           ║\r\n");
-    printf("║ . . . . │                                           ║\r\n");
-    printf("║ . . . . │                                           ║\r\n");
+    printf("║ ");
+    printf("%-1X ", m->memory->data[0xF000]);
+    printf("%-1X ", m->memory->data[0xF001]);
+    printf("%-1X ", m->memory->data[0xF002]);
+    printf("%-1X ", m->memory->data[0xF003]);
+    printf("│                                           ║\r\n");
+    printf("║ ");
+    printf("%-1X ", m->memory->data[0xF004]);
+    printf("%-1X ", m->memory->data[0xF005]);
+    printf("%-1X ", m->memory->data[0xF006]);
+    printf("%-1X ", m->memory->data[0xF007]);
+    printf("│                                           ║\r\n");
+    printf("║ ");
+    printf("%-1X ", m->memory->data[0xF008]);
+    printf("%-1X ", m->memory->data[0xF009]);
+    printf("%-1X ", m->memory->data[0xF00A]);
+    printf("%-1X ", m->memory->data[0xF00B]);
+    printf("│                                           ║\r\n");
+    printf("║ ");
+    printf("%-1X ", m->memory->data[0xF00C]);
+    printf("%-1X ", m->memory->data[0xF00D]);
+    printf("%-1X ", m->memory->data[0xF00E]);
+    printf("%-1X ", m->memory->data[0xF00F]);
+    printf("│                                           ║\r\n");
 
     printf("╚═════════╧═══════════════════════════════════════════╝\r\n");
     printf(E(0m) "\r\n" E(?25h));
@@ -154,7 +176,13 @@ static inline void machine_io(machine *m) {
     // Get the currently pressed keys. If they changed since last time and the
     // interrupt flag is not asserted, set the keyboard value in the
     // memory-mapped IO segment and assert the interrupt flag.
-    uint16_t keymap = kbio_get_keymap();
+    char meta = 0;
+    uint16_t keymap = kbio_get_keymap(&meta);
+
+    if (meta == 'q') {
+        m->flags |= 0x20;  // Set halt flag
+        return;
+    }
 
     if (keymap != prev_keymap && (m->flags & 0x10) == 0) {
         m->memory->data[0xFFF0] = keymap & 0x000F;
@@ -163,7 +191,7 @@ static inline void machine_io(machine *m) {
         m->memory->data[0xFFF3] = (keymap & 0xF000) >> 12;
 
         prev_keymap = keymap;
-        m->flags |= 0x10;
+        m->flags |= 0x10;  // Set interrupt flag
     }
 }
 
@@ -173,8 +201,7 @@ void machine_start(machine *m) {
     m->iv += READ_QUARTET(m->pc);
     m->ix += READ_QUARTET(m->pc);
     m->ta += READ_QUARTET(m->pc);
-    m->pc += pc;
-
+    m->pc = m->memory->data + pc;
     m->status = STATE_RUN;
 }
 
@@ -198,12 +225,27 @@ void machine_run(machine *m) {
         machine_instr_execute(m);
         machine_show(m);
         machine_io(m);
+        machine_interrupt_check(m);
     }
 }
 
-static inline void machine_instr_fetch(machine *m) {
-    m->instr = READ_NEXT(m->pc);
+static inline void machine_interrupt_check(machine *m) {
+    if (!(m->flags & 0x10) || m->int_mask) {
+        return;
+    } else {
+        m->int_mask = true;
+        uint16_t dest = m->iv - m->memory->data;
+
+        uint16_t pc = m->pc - m->memory->data;
+        *(m->sp)++ = pc & 0xF;
+        *(m->sp)++ = (pc >> 4) & 0xF;
+        *(m->sp)++ = (pc >> 8) & 0xF;
+        *(m->sp)++ = (pc >> 12) & 0xF;
+        m->pc = m->memory->data + dest;
+    }
 }
+
+static inline void machine_instr_fetch(machine *m) { m->instr = READ_NEXT(m->pc); }
 
 static inline void machine_instr_decode(machine *m) {
     switch (m->instr) {
@@ -240,6 +282,7 @@ static inline void machine_instr_decode(machine *m) {
         switch (m->dst) {
         case REGISTER_CV: {
             // Read-only registers are not valid destinations; HALT.
+            exit(1);
             SET_HALT(m->flags);
             break;
         }
@@ -329,15 +372,15 @@ static inline void machine_instr_execute(machine *m) {
     }
     case ADD: {
         // Set overflow and carry based on the target register width
-        uint16_t value = (machine_get_value(m, m->src, m->src_ext) +
-                          machine_get_value(m, m->dst, m->dst_ext));
+        uint16_t value =
+            (machine_get_value(m, m->src, m->src_ext) + machine_get_value(m, m->dst, m->dst_ext));
         machine_set_value(m, m->dst, m->dst_ext, value);
         SET_ZN(m->flags, value);
         break;
     }
     case SUB: {
-        uint16_t value = machine_get_value(m, m->dst, m->dst_ext) -
-                         machine_get_value(m, m->src, m->src_ext);
+        uint16_t value =
+            machine_get_value(m, m->dst, m->dst_ext) - machine_get_value(m, m->src, m->src_ext);
         machine_set_value(m, m->dst, m->dst_ext, value);
         SET_ZN(m->flags, value);
         break;
@@ -406,8 +449,8 @@ static inline void machine_instr_execute(machine *m) {
         break;
     }
     case CMP: {
-        if (((m->src < REGISTER_PC || m->src >= REGISTER_CV) &&
-             m->dst >= REGISTER_PC && m->dst < REGISTER_CV) ||
+        if (((m->src < REGISTER_PC || m->src >= REGISTER_CV) && m->dst >= REGISTER_PC &&
+             m->dst < REGISTER_CV) ||
             (m->src >= REGISTER_PC && m->src < REGISTER_CV &&
              (m->dst < REGISTER_PC || m->dst > REGISTER_CV))) {
             // If the src and dst widths don't match, we can't compare
@@ -428,6 +471,11 @@ static inline void machine_instr_execute(machine *m) {
         uint16_t value = *(m->sp)-- & 0xF;
         // TODO: Pop 4 values if the destination is 16 bit?
         if (m->dst >= REGISTER_PC) {
+            if (m->int_mask && ~m->flags & 0x10) {
+                // The interrupt mask has been cleared by software
+                // so we can unmask the interrupt
+                m->int_mask = false;
+            }
             // Moving a 4-bit value into a 16-bit register.
             // Combine the masked src and dst values
             uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
@@ -454,15 +502,13 @@ static inline void machine_instr_execute(machine *m) {
         // execution will continue at the target address if the 7th bit of the S
         // register is 1.
 
-        if ((m->flags & (1 << (m->dst & 7))) ==
-            (((m->dst & 8) >> 3) << (m->dst & 7))) {
+        if ((m->flags & (1 << (m->dst & 7))) == (((m->dst & 8) >> 3) << (m->dst & 7))) {
             m->pc = m->memory->data + m->dst_ext;
         }
         break;
     }
     case JSR: {
-        if ((m->flags & (1 << (m->dst & 7))) ==
-            (((m->dst & 8) >> 3) << (m->dst & 7))) {
+        if ((m->flags & (1 << (m->dst & 7))) == (((m->dst & 8) >> 3) << (m->dst & 7))) {
             uint16_t pc = m->pc - m->memory->data;
             *(m->sp)++ = pc & 0xF;
             *(m->sp)++ = (pc >> 4) & 0xF;
@@ -475,14 +521,13 @@ static inline void machine_instr_execute(machine *m) {
     case MOV: {
         uint16_t value = 0;
 
-        if ((m->src < REGISTER_PC || m->src >= REGISTER_CV) &&
-            m->dst >= REGISTER_PC && m->dst < REGISTER_CV) {
+        if ((m->src < REGISTER_PC || m->src >= REGISTER_CV) && m->dst >= REGISTER_PC &&
+            m->dst < REGISTER_CV) {
             // Moving a 4-bit value into a 16-bit register.
             // Combine the masked src and dst values
             value = machine_get_value(m, m->src, m->src_ext);
             uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
-            machine_set_value(m, m->dst, m->dst_ext,
-                              (dst & 0xFFF0) | (value & 0xF));
+            machine_set_value(m, m->dst, m->dst_ext, (dst & 0xFFF0) | (value & 0xF));
         } else {
             value = machine_get_value(m, m->src, m->src_ext);
             machine_set_value(m, m->dst, m->dst_ext, value);

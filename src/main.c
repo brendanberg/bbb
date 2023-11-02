@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "assem.h"
 #include "cpu.h"
 
@@ -48,12 +47,15 @@ int bbb_run(FILE *image) {
     fseek(image, 0L, SEEK_SET);
 
     char *prog = calloc(img_size + 1, sizeof(char));
-    fgets(prog, img_size, image);
+    fread(prog, sizeof(char), img_size, image);
+
     machine *m = machine_init(MAX_ADDRESS);
     memcpy(m->memory->data, prog, img_size);
 
+    machine_start(m);
     machine_show(m);
     machine_run(m);
+    machine_show(m);
     machine_free(m);
 
     return 0;
