@@ -9,12 +9,18 @@
 uint16_t prev_keymap = 0;
 
 #define READ_NEXT(x) (*(x)++)
-#define READ_QUARTET(x) (*(x)++ << 12 | *(x)++ << 8 | *(x)++ << 4 | *(x)++)
+#define READ_QUARTET(x) ((uint16_t)(*(x)++ << 12 | *(x)++ << 8 | *(x)++ << 4 | *(x)++))
 
 #define SET_HALT(x) ((x) |= 0x20)
-#define SET_CMP(x, lhs, rhs) ((x) = ((x)&0xFC) | (((lhs) == (rhs)) << 1) | ((lhs) > (rhs)))
-#define SET_ZN(x, val) ((x) = ((x)&0xFC) | ((val) ? 0 : 1) << 1 | ((val) < 0 ? 1 : 0))
-
+#define SET_CMP(x, lhs, rhs) \
+    ((x) = (uint8_t)((x) & 0xFC) | (uint8_t)(((lhs) == (rhs)) << 1) | ((lhs) > (rhs)))
+// TODO: Does the lhs > rhs comparison need to be aware of signedness...
+#define SET_ZN(x, val) \
+    ((x) = (uint8_t)((x) & 0xFC) | (uint8_t)(((val) ? 0 : 1) << 1) | ((uint8_t)(val) < 0 ? 1 : 0))
+#define SET_N4(x, val) ((x) = (uint8_t)((x) & 0xFE) | ((val) & 0x08 ? 1 : 0))
+#define SET_N16(x, val) ((x) = (uint8_t)((x) & 0xFE) | ((val) & 0x8000 ? 1 : 0))
+#define SET_O(x, val) ((x) = (uint8_t)((x) & 0xF7) | ((val) ? 0x08 : 0))
+#define SET_C(x, val) ((x) = (uint8_t)((x) & 0xFB) | ((val) ? 0x04 : 0))
 // General purpose registers are 4-bit. Special registers are 16-bit
 static inline void machine_instr_fetch(machine *m);
 static inline void machine_instr_decode(machine *m);
@@ -31,15 +37,15 @@ static inline uint16_t machine_get_value(machine *m, Register src, uint16_t src_
     case REGISTER_MX:
         return memory_read_indexed(m->memory, m->ix, src_ext);
     case REGISTER_PC:
-        return m->pc - m->memory->data;
+        return (unsigned short)(m->pc - m->memory->data);
     case REGISTER_SP:
-        return m->sp - m->memory->data;
+        return (unsigned short)(m->sp - m->memory->data);
     case REGISTER_IV:
-        return m->iv - m->memory->data;
+        return (unsigned short)(m->iv - m->memory->data);
     case REGISTER_IX:
-        return m->ix - m->memory->data;
+        return (unsigned short)(m->ix - m->memory->data);
     case REGISTER_TA:
-        return m->ta - m->memory->data;
+        return (unsigned short)(m->ta - m->memory->data);
     case REGISTER_S0:
         return m->flags & 0x0F;
     case REGISTER_S1:
@@ -55,7 +61,7 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
         m->flags |= 0x20;
         break;
     case REGISTER_MD:
-        memory_write(m->memory, dst_ext, value);
+        memory_write(m->memory, dst_ext, value & 0xF);
         break;
     case REGISTER_MX:
         memory_write_indexed(m->memory, m->ix, dst_ext, value & 0xF);
@@ -76,13 +82,13 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
         m->ta = (m->memory->data + value);
         break;
     case REGISTER_S0:
-        m->flags = value & 0x0F;
+        m->flags = (m->flags & 0xB0) | (value & 0x0F) | 0x80;
         break;
     case REGISTER_S1:
-        m->flags = (value & 0x03) << 4;
+        m->flags = (m->flags & 0x8F) | (uint8_t)((value & 0x03) << 4) | 0x80;
         break;
     default:
-        m->registers[dst] = value;
+        m->registers[dst] = value & 0xF;
         break;
     }
 }
@@ -111,7 +117,7 @@ void machine_show(machine *m) {
     printf("│" E385(6m) " PROG  STAK  INTR  INDX  TEMP " E385(13m) "║\r\n");
     printf("║" E385(5m) " ");
 
-    RENDER(m->registers[REGISTER_A], E(1m) E385(5m) "%X " E0(35m), E385(11m) "%X ");
+    RENDER(m->registers[REGISTER_A], E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
     RENDER(m->registers[REGISTER_B], E(1m) E385(5m) "%X " E0(35m), E385(11m) "%X ");
     RENDER(m->registers[REGISTER_C], E(1m) E385(5m) "%X " E0(35m), E385(11m) "%X ");
     RENDER(m->registers[REGISTER_D], E(1m) E385(5m) "%X " E0(35m), E385(11m) "%X ");
@@ -144,29 +150,30 @@ void machine_show(machine *m) {
     printf("╠═════════╤═══╧════════╧══════════════════════════════╣\r\n");
 
     printf("║ ");
-    printf("%-1X ", m->memory->data[0xF000]);
-    printf("%-1X ", m->memory->data[0xF001]);
-    printf("%-1X ", m->memory->data[0xF002]);
-    printf("%-1X ", m->memory->data[0xF003]);
-    printf("│                                           ║\r\n");
+    // printf("%-1X ", m->memory->data[0xF000]);
+    RENDER(m->memory->data[0xF000], E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF001), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF002), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF003), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    printf(E385(13m) "│                                           ║\r\n");
     printf("║ ");
-    printf("%-1X ", m->memory->data[0xF004]);
-    printf("%-1X ", m->memory->data[0xF005]);
-    printf("%-1X ", m->memory->data[0xF006]);
-    printf("%-1X ", m->memory->data[0xF007]);
-    printf("│                                           ║\r\n");
+    RENDER(memory_read(m->memory, 0xF004), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF005), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF006), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF007), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    printf(E385(13m) "│                                           ║\r\n");
     printf("║ ");
-    printf("%-1X ", m->memory->data[0xF008]);
-    printf("%-1X ", m->memory->data[0xF009]);
-    printf("%-1X ", m->memory->data[0xF00A]);
-    printf("%-1X ", m->memory->data[0xF00B]);
-    printf("│                                           ║\r\n");
+    RENDER(memory_read(m->memory, 0xF008), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF009), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF00A), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF00B), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    printf(E385(13m) "│                                           ║\r\n");
     printf("║ ");
-    printf("%-1X ", m->memory->data[0xF00C]);
-    printf("%-1X ", m->memory->data[0xF00D]);
-    printf("%-1X ", m->memory->data[0xF00E]);
-    printf("%-1X ", m->memory->data[0xF00F]);
-    printf("│                                           ║\r\n");
+    RENDER(memory_read(m->memory, 0xF00C), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF00D), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF00E), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    RENDER(memory_read(m->memory, 0xF00F), E(1m) E385(5m) "%01X " E0(35m), E385(11m) "%01X ");
+    printf(E385(13m) "│                                           ║\r\n");
 
     printf("╚═════════╧═══════════════════════════════════════════╝\r\n");
     printf(E(0m) "\r\n" E(?25h));
@@ -213,7 +220,7 @@ void machine_reset(machine *m) {
     m->pc = m->sp = m->iv = m->ix = m->ta = m->memory->data;
     m->flags = 0x80;
 
-    for (uint8_t i = 0; i < 8; i++) {
+    for (uint8_t i = 0; i < 6; i++) {
         m->registers[i] = 0;
     }
 }
@@ -234,9 +241,9 @@ static inline void machine_interrupt_check(machine *m) {
         return;
     } else {
         m->int_mask = true;
-        uint16_t dest = m->iv - m->memory->data;
+        uint16_t dest = (uint16_t)(m->iv - m->memory->data);
 
-        uint16_t pc = m->pc - m->memory->data;
+        uint16_t pc = (uint16_t)(m->pc - m->memory->data);
         *(m->sp)++ = pc & 0xF;
         *(m->sp)++ = (pc >> 4) & 0xF;
         *(m->sp)++ = (pc >> 8) & 0xF;
@@ -372,24 +379,36 @@ static inline void machine_instr_execute(machine *m) {
     }
     case ADD: {
         // Set overflow and carry based on the target register width
-        uint16_t value =
-            (machine_get_value(m, m->src, m->src_ext) + machine_get_value(m, m->dst, m->dst_ext));
+        uint16_t src = machine_get_value(m, m->src, m->src_ext);
+        uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
+        uint16_t value = src + dst;
+
+        if (m->flags & 0x04) {
+            value += 1;
+        }
         machine_set_value(m, m->dst, m->dst_ext, value);
+        SET_O(m->flags, (src & 0x8 && dst & 0x8) ^ (src & 0x10 && dst & 0x10));
+        SET_C(m->flags, value & 0x10);
         SET_ZN(m->flags, value);
         break;
     }
     case SUB: {
-        uint16_t value =
-            machine_get_value(m, m->dst, m->dst_ext) - machine_get_value(m, m->src, m->src_ext);
+        uint16_t src = machine_get_value(m, m->src, m->src_ext);
+        uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
+        uint16_t value = dst - src;
         machine_set_value(m, m->dst, m->dst_ext, value);
+        // TODO IS THIS RIGHT?
+        SET_O(m->flags, (src & 0x8 && dst & 0x8) ^ (src & 0x10 && dst & 0x10));
+        SET_C(m->flags, value & 0x10);
         SET_ZN(m->flags, value);
         break;
     }
     case RLC: {
         uint16_t value = machine_get_value(m, m->dst, m->dst_ext);
         uint8_t flags = m->flags;
-        m->flags = (value & 0xA000) | (flags & 0xFB);
-        value = (value << 1) | ((flags & 0x4) >> 2);
+        // TODO: WTF is going on here?
+        m->flags = (uint8_t)((value & 0xA000) | (flags & 0xFB));
+        value = (uint16_t)(value << 1) | ((flags & 0x4) >> 2);
         machine_set_value(m, m->dst, m->dst_ext, value);
         SET_ZN(m->flags, value);
         break;
@@ -397,8 +416,9 @@ static inline void machine_instr_execute(machine *m) {
     case RRC: {
         uint16_t value = machine_get_value(m, m->dst, m->dst_ext);
         uint8_t flags = m->flags;
+        // TODO: WTF again?
         m->flags = (value & 0x1) | (flags & 0xFB);
-        value = (value >> 1) | ((flags & 0x4) << 13);
+        value = (value >> 1) | (uint16_t)((flags & 0x4) << 13);
         machine_set_value(m, m->dst, m->dst_ext, value);
         SET_ZN(m->flags, value);
         break;
@@ -449,7 +469,7 @@ static inline void machine_instr_execute(machine *m) {
         break;
     }
     case CMP: {
-        if (((m->src < REGISTER_PC || m->src >= REGISTER_CV) && m->dst >= REGISTER_PC &&
+        if (((m->src < REGISTER_PC || m->src > REGISTER_CV) && m->dst >= REGISTER_PC &&
              m->dst < REGISTER_CV) ||
             (m->src >= REGISTER_PC && m->src < REGISTER_CV &&
              (m->dst < REGISTER_PC || m->dst > REGISTER_CV))) {
@@ -509,7 +529,7 @@ static inline void machine_instr_execute(machine *m) {
     }
     case JSR: {
         if ((m->flags & (1 << (m->dst & 7))) == (((m->dst & 8) >> 3) << (m->dst & 7))) {
-            uint16_t pc = m->pc - m->memory->data;
+            uint16_t pc = (uint16_t)(m->pc - m->memory->data);
             *(m->sp)++ = pc & 0xF;
             *(m->sp)++ = (pc >> 4) & 0xF;
             *(m->sp)++ = (pc >> 8) & 0xF;
@@ -521,15 +541,22 @@ static inline void machine_instr_execute(machine *m) {
     case MOV: {
         uint16_t value = 0;
 
-        if ((m->src < REGISTER_PC || m->src >= REGISTER_CV) && m->dst >= REGISTER_PC &&
-            m->dst < REGISTER_CV) {
-            // Moving a 4-bit value into a 16-bit register.
-            // Combine the masked src and dst values
+        if (m->dst >= REGISTER_PC && m->dst < REGISTER_CV) {
+            // The destination is a 16-bit register
             value = machine_get_value(m, m->src, m->src_ext);
             uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
-            machine_set_value(m, m->dst, m->dst_ext, (dst & 0xFFF0) | (value & 0xF));
+
+            if (m->src < REGISTER_PC || m->src > REGISTER_CV) {
+                // Moving a 4-bit value into a 16-bit register.
+                // Combine the masked src and dst values
+                value = (dst & 0xFFF0) | (value & 0xF);
+            }
+
+            machine_set_value(m, m->dst, m->dst_ext, value);
+            //     // Moving
         } else {
             value = machine_get_value(m, m->src, m->src_ext);
+            // fprintf(stderr, "machine_get_value(m, %X, %X) = %d\n", m->src, m->src_ext, value);
             machine_set_value(m, m->dst, m->dst_ext, value);
         }
         break;

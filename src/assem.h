@@ -4,6 +4,6 @@
 #include "memory.h"
 
 memory *assemble(char *prog);
-memory *build_image(char *filename, char *prog);
+memory *build_image(char *filename, char *prog, bool verbose);
 
 #endif

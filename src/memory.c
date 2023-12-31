@@ -1,5 +1,4 @@
 #include "memory.h"
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -13,7 +12,7 @@ memory *memory_init(size_t size) {
 }
 
 uint8_t memory_read(memory *mem, size_t address) {
-    if (address > mem->size) {
+    if (address > (mem->size - 1)) {
         return 0;
     }
 
@@ -21,10 +20,9 @@ uint8_t memory_read(memory *mem, size_t address) {
 }
 
 uint8_t memory_read_indexed(memory *mem, uint8_t *index, size_t offset) {
-    // TODO: The pointer math here is very likely wrong...
-    size_t address = (index - mem->data) + offset;
+    size_t address = (unsigned long)(index - mem->data) + offset;
 
-    if (address > mem->size) {
+    if (address > (mem->size - 1)) {
         return 0;
     }
 
@@ -32,7 +30,7 @@ uint8_t memory_read_indexed(memory *mem, uint8_t *index, size_t offset) {
 }
 
 bool memory_write(memory *mem, size_t address, uint8_t value) {
-    if (address > mem->size) {
+    if (address > (mem->size - 1)) {
         return false;
     }
 
@@ -41,10 +39,9 @@ bool memory_write(memory *mem, size_t address, uint8_t value) {
 };
 
 bool memory_write_indexed(memory *mem, uint8_t *index, size_t offset, uint8_t value) {
-    // TODO: The pointer math here is very likely wrong...
-    size_t address = (index - mem->data) + offset;
+    size_t address = (unsigned long)(index - mem->data) + offset;
 
-    if (address > mem->size) {
+    if (address > (mem->size - 1)) {
         return false;
     }
 

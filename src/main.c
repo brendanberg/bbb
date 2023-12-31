@@ -8,21 +8,25 @@
 #include "cpu.h"
 
 #define MAX_ADDRESS (64 * 1024)
-#define USAGE_STRING "usage: %s assemble SOURCE_FILE IMAGE\n       %s run IMAGE\n"
+#define USAGE_STRING "usage: %s assemble [OPTIONS] SOURCE_FILE IMAGE\n       %s run IMAGE\n"
 
-int bbb_assemble(char *source_name, FILE *source, FILE *image) {
+typedef struct Options {
+    bool verbose;
+} Options;
+
+int bbb_assemble(char *source_name, FILE *source, FILE *image, Options opts) {
     if (fseek(source, 0L, SEEK_END) != 0) {
         fprintf(stderr, "error: unable to determine source file size\n");
         return EXIT_FAILURE;
     }
 
-    size_t src_size = ftell(source);
+    size_t src_size = (size_t)ftell(source);
     fseek(source, 0L, SEEK_SET);
     fseek(image, 0L, SEEK_SET);
 
     char *prog = calloc(src_size + 1, sizeof(char));
     fread(prog, sizeof(char), src_size, source);
-    memory *mem = build_image(source_name, prog);
+    memory *mem = build_image(source_name, prog, opts.verbose);
 
     fwrite(mem->data, mem->size, 1, image);
     fflush(image);
@@ -37,7 +41,7 @@ int bbb_run(FILE *image) {
         return EXIT_FAILURE;
     }
 
-    size_t img_size = ftell(image);
+    size_t img_size = (size_t)ftell(image);
 
     if (img_size > MAX_ADDRESS) {
         fprintf(stderr, "error: machine image is too big\n");
@@ -64,19 +68,31 @@ int bbb_run(FILE *image) {
 int main(int argc, char *argsv[]) {
     int status = EXIT_FAILURE;
 
-    if (argc <= 2 || argc >= 5) {
-        fprintf(stderr, USAGE_STRING, argsv[0], argsv[0]);
-        return EXIT_FAILURE;
-    }
-
     if (strcmp(argsv[1], "assemble") == 0) {
-        if (argc != 4) {
-            fprintf(stderr, "usage: %s assemble SOURCE IMAGE\n", argsv[0]);
+        bool error = false;
+        Options opts = {.verbose = false};
+
+        int idx = 2;
+
+        while (argsv[idx][0] == '-') {
+            if (strcmp(argsv[idx], "-v") == 0) {
+                opts.verbose = true;
+            } else {
+                printf("unrecognized argument %s\n", argsv[idx]);
+                error = true;
+            }
+
+            idx++;
+        }
+
+        if (error || argc != idx + 2) {
+            fprintf(stderr, "usage: %s assemble [OPTIONS] SOURCE IMAGE\n", argsv[0]);
+            fprintf(stderr, "  options: -v verbose\n");
             return EXIT_FAILURE;
         }
 
-        char *src_path = argsv[2];
-        char *image_path = argsv[3];
+        char *src_path = argsv[idx++];
+        char *image_path = argsv[idx++];
         // TODO: validation, etc
         FILE *source = fopen(src_path, "r");
         FILE *image = fopen(image_path, "wb");
@@ -91,7 +107,7 @@ int main(int argc, char *argsv[]) {
             return EXIT_FAILURE;
         }
 
-        status = bbb_assemble(src_path, source, image);
+        status = bbb_assemble(src_path, source, image, opts);
 
         fclose(source);
         fclose(image);

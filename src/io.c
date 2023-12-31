@@ -13,7 +13,7 @@ void kbio_setup() {
     atexit(kbio_teardown);
 
     struct termios term = term_orig;
-    term.c_lflag &= ~(ECHO | ICANON);
+    term.c_lflag &= (unsigned long)~(ECHO | ICANON);
     term.c_cc[VMIN] = 0;
     term.c_cc[VTIME] = 0;
     tcsetattr(STDIN_FILENO, TCSANOW, &term);

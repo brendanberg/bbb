@@ -1,0 +1,35 @@
+#data 0020 1000 00A0
+
+#org 0020
+    DEC %c          (set register c to 0xF)
+    MOV %c %b
+START:
+    MOV 0xF000 %ix
+    MOV %b %a
+LOOP:
+    MOV %a *0000
+    INC %ix
+    DEC %a
+    CMP %b %a
+    JMP Z=0 .LOOP
+
+WAIT:
+    MOV 15 %d
+D:
+    MOV 15 %e
+E:
+    MOV 2 %f
+F:
+    DEC %f
+    JMP Z=0 .F
+    DEC %e
+    JMP Z=0 .E
+    DEC %d
+    JMP Z=0 .D
+
+    DEC %b
+    CMP %b %c
+    JMP Z=0 .START
+
+    OR 2 %s1
+

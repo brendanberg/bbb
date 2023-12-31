@@ -1,9 +1,7 @@
 #include "assem.h"
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "cpu.h"
 #include "memory.h"
 #include "table.h"
@@ -60,15 +58,15 @@ char *directives[DIRECTIVE_COUNT] = {"org", "data"};
 
 #define PUSH_NEXT(m, v) (*(m)++ = (v))
 
-#define PUSH_QUARTET(m, v)           \
-    do {                             \
-        *(m)++ = ((v)&0xF000) >> 12; \
-        *(m)++ = ((v)&0xF00) >> 8;   \
-        *(m)++ = ((v)&0xF0) >> 4;    \
-        *(m)++ = ((v)&0xF);          \
+#define PUSH_QUARTET(m, v)             \
+    do {                               \
+        *(m)++ = ((v) & 0xF000) >> 12; \
+        *(m)++ = ((v) & 0xF00) >> 8;   \
+        *(m)++ = ((v) & 0xF0) >> 4;    \
+        *(m)++ = ((v) & 0xF);          \
     } while (0)
 
-#define UPDATE_STATE(st, v) ((st) & ~MASK_PARSE_STATE | (v))
+#define UPDATE_STATE(st, v) ((st) & ~(unsigned int)MASK_PARSE_STATE | (v))
 
 static inline ParseState parse_directive(context *, char *);
 static inline ParseState parse_opcode(context *, char *);
@@ -76,14 +74,14 @@ static inline ParseState parse_condition(context *, char *);
 static inline ParseState parse_dest(context *, char *, uint16_t *, char **);
 static inline ParseState parse_src(context *, char *, uint16_t *, char **);
 static inline bool parse_register(context *, char *, uint8_t *);
-static inline bool parse_addr(context *, char *, uint16_t *, char **);
+static inline Register parse_addr(context *, char *, uint16_t *, char **);
 static inline bool parse_hex(char *, uint8_t, uint16_t *);
 static inline bool parse_int(char *, uint16_t *);
 static inline bool parse_label(char *);
 
-bool tokenize(context *, char *, uint16_t);
+bool tokenize(context *, char *, uint32_t, bool debug);
 
-memory *build_image(char *filename, char *prog) {
+memory *build_image(char *filename, char *prog, bool debug) {
     memory *mem = memory_init(CPU_MAX_ADDRESS);
     table *symbols = table_init();
 
@@ -91,50 +89,50 @@ memory *build_image(char *filename, char *prog) {
 
     for (char *l = strsep(&prog, "\n"); l != NULL; l = strsep(&prog, "\n")) {
         char *line = strdup(l);
-        if (!tokenize(&ctx, line, ++ctx.line)) {
+        if (!tokenize(&ctx, line, ++ctx.line, debug)) {
             fprintf(stderr, "%s:%d: %s\n", filename, ctx.line, l);
             break;
         }
         free(line);
     }
 
-    // table_print(symbols);
-
     for (reference *r = table_ref_pop(symbols); r != NULL; r = table_ref_pop(symbols)) {
-        symbol *s = table_symbol_lookup(symbols, r->label);
+        symbol *s = table_symbol_lookup_offset(symbols, r->label_offset);
 
         if (s) {
-            uint16_t addr = s->address;
-            *(r->offset + 0) = (addr >> 12) & 0xF;
-            *(r->offset + 1) = (addr >> 8) & 0xF;
-            *(r->offset + 2) = (addr >> 4) & 0xF;
-            *(r->offset + 3) = (addr >> 0) & 0xF;
+            size_t addr = s->address;
+            *(r->prog_offset + 0) = (addr >> 12) & 0xF;
+            *(r->prog_offset + 1) = (addr >> 8) & 0xF;
+            *(r->prog_offset + 2) = (addr >> 4) & 0xF;
+            *(r->prog_offset + 3) = (addr >> 0) & 0xF;
         } else {
-            fprintf(stderr, "error: reference to undefined symbol '%s'\n", r->label);
+            char *label = table_get_label(symbols, r->label_offset);
+            fprintf(stderr, "error: reference to undefined symbol '%s'\n", label);
             return NULL;
         }
     }
 
-    // printf("\nIMAGE\n-------------------  -------------------\n");
+    if (debug) {
+        // memory_print(mem);
+        printf("Image\n-------------------  -------------------\n");
 
-    // size_t len = ctx.data - mem->data;
+        for (size_t i = 0; i < 512; i++) {
+            printf("%0X", mem->data[i]);
 
-    for (size_t i = 0; i < 512; i++) {
-        printf("%0X", mem->data[i]);
-
-        if (i % 32 == 31) {
-            printf("\n");
-        } else if (i % 16 == 15) {
-            printf("  ");
-        } else if (i % 4 == 3) {
-            printf(" ");
+            if (i % 32 == 31) {
+                printf("\n");
+            } else if (i % 16 == 15) {
+                printf("  ");
+            } else if (i % 4 == 3) {
+                printf(" ");
+            }
         }
     }
 
     return mem;
 }
 
-bool tokenize(context *ctx, char *line, uint16_t num) {
+bool tokenize(context *ctx, char *line, uint32_t num, bool verbose) {
     char *delim = "\t ";
     char *close = ")";
     char *sep = delim;
@@ -182,7 +180,7 @@ bool tokenize(context *ctx, char *line, uint16_t num) {
 
         if (t[length - 1] == ':') {
             t[length - 1] = '\0';
-            table_symbol_define(ctx->symbols, t, DATA_OFFSET(ctx));
+            table_symbol_define(ctx->symbols, t, (size_t)DATA_OFFSET(ctx));
             continue;
         }
 
@@ -196,8 +194,12 @@ bool tokenize(context *ctx, char *line, uint16_t num) {
             break;
         }
         case PARSE_ADDR: {
-            if (parse_addr(ctx, t, &dst_ext, &dst_label)) {
-                st = UPDATE_STATE(st, PARSE_DONE | (REGISTER_MD << OFFSET_DEST));
+            Register r;
+            // We're doing something odd here to get the correct virtual
+            // register out of parse_addr. (parse_addr returns REGISTER_A
+            // to signal an error parsing a valid address.)
+            if ((r = parse_addr(ctx, t, &dst_ext, &dst_label))) {
+                st = UPDATE_STATE(st, PARSE_DONE | (r << OFFSET_DEST));
             } else {
                 fprintf(stderr, "error: expected address, found '%s'\n", t);
             }
@@ -265,7 +267,7 @@ bool tokenize(context *ctx, char *line, uint16_t num) {
                     table_ref_add(ctx->symbols, src_label, ctx->data);
                 }
 
-                if (source == REGISTER_CV && dest < REGISTER_PC) {
+                if (source == REGISTER_CV && (dest < REGISTER_PC || dest > REGISTER_CV)) {
                     // We only want to push one word of data when a constant value's destination
                     // is a 4-bit general purpose register.
                     PUSH_NEXT(ctx->data, src_ext & 0xF);
@@ -297,7 +299,7 @@ bool tokenize(context *ctx, char *line, uint16_t num) {
 static inline ParseState parse_directive(context *ctx, char *token) {
     MetaDirective dir = META_ERROR;
 
-    for (size_t i = 0; i < DIRECTIVE_COUNT; i++) {
+    for (MetaDirective i = 0; i < DIRECTIVE_COUNT; i++) {
         if (strcmp(token, directives[i]) == 0) {
             dir = i;
             break;
@@ -334,7 +336,7 @@ static inline ParseState parse_condition(context *ctx, char *token) {
         return PARSE_ERROR;
     }
 
-    uint8_t test = (token[2] == '1') << 3;
+    uint8_t test = (uint8_t)((token[2] == '1') << 3);
 
     char *bitfield = "NZCOIH01";
 
@@ -354,7 +356,7 @@ static inline ParseState parse_src(context *ctx, char *token, uint16_t *ext, cha
 
     if (token[0] == '%') {
         if (parse_register(ctx, &token[1], &reg)) {
-            return PARSE_DEST | (reg << OFFSET_SRC);
+            return PARSE_DEST | (ParseState)(reg << OFFSET_SRC);
         } else {
             fprintf(stderr, "error: unrecognized register '%s'\n", token);
             return PARSE_ERROR;
@@ -372,9 +374,10 @@ static inline ParseState parse_src(context *ctx, char *token, uint16_t *ext, cha
         }
     }
 
-    if (parse_addr(ctx, token, ext, label)) {
-        PUSH_NEXT(ctx->data, REGISTER_MD);
-        return PARSE_DEST | (REGISTER_MD << OFFSET_SRC);
+    Register r;
+    if ((r = parse_addr(ctx, token, ext, label))) {
+        PUSH_NEXT(ctx->data, (uint8_t)r);
+        return PARSE_DEST | (r << OFFSET_SRC);
     } else if (parse_int(token, ext)) {
         PUSH_NEXT(ctx->data, REGISTER_CV);
         return PARSE_DEST | (REGISTER_CV << OFFSET_SRC);
@@ -389,16 +392,17 @@ static inline ParseState parse_dest(context *ctx, char *token, uint16_t *ext, ch
 
     if (token[0] == '%') {
         if (parse_register(ctx, &token[1], &reg)) {
-            return PARSE_DONE | (reg << OFFSET_DEST);
+            return PARSE_DONE | (ParseState)(reg << OFFSET_DEST);
         } else {
             fprintf(stderr, "error: unrecognized register '%s'\n", token);
             return PARSE_ERROR;
         }
     }
 
-    if (parse_addr(ctx, token, ext, label)) {
-        PUSH_NEXT(ctx->data, REGISTER_MD);
-        return PARSE_DONE | (REGISTER_MD << OFFSET_DEST);
+    Register r;
+    if ((r = parse_addr(ctx, token, ext, label))) {
+        PUSH_NEXT(ctx->data, (uint8_t)r);
+        return PARSE_DONE | (ParseState)(r << OFFSET_DEST);
     } else {
         fprintf(stderr, "error: unable to parse destination operand '%s'\n", token);
         return PARSE_ERROR;
@@ -417,38 +421,39 @@ static inline bool parse_register(context *ctx, char *token, uint8_t *reg) {
     return false;
 }
 
-static inline bool parse_addr(context *ctx, char *token, uint16_t *addr, char **label) {
+static inline Register parse_addr(context *ctx, char *token, uint16_t *addr, char **label) {
     switch (token[0]) {
     case '@': {
         // Memory direct address
         if (parse_hex(&token[1], 4, addr)) {
-            return true;
+            return REGISTER_MD;
         } else {
             fprintf(stderr, "error: expected hex address, found '%s'\n", token);
-            return false;
+            return REGISTER_A;
         }
     }
     case '*': {
         // Memory indexed
         if (parse_hex(&token[1], 4, addr)) {
-            return true;
+            return REGISTER_MX;
         } else {
             fprintf(stderr, "error: expected hex address, found '%s'\n", token);
-            return false;
+            return REGISTER_A;
         }
     }
     case '.': {
         // Label reference
         if (parse_label(&token[1])) {
             *label = &token[1];
-            return true;
+            // TODO: determine how to distinguish between absolute and relative labels
+            return REGISTER_MD;
         } else {
             fprintf(stderr, "error: expected label, found '%s'\n", token);
-            return false;
+            return REGISTER_A;
         }
     }
     default:
-        return false;
+        return REGISTER_A;
     }
 }
 
