@@ -1,0 +1,51 @@
+(Compute the Fibonacci sequence using the imperative paradigm)
+
+#data 0020 1000 00A0 0000
+
+#org F000
+#data 0000            (Operand A)
+#data 0001            (Operand B)
+
+#org 0020
+FIB:
+    MOV 15 %b
+
+
+ADD:
+    MOV 3 %ix         (We're going to index from the rightmost, or least      )
+    JMP 1=1 .ST_ADD   (  significant position and work our way to the left.   )
+LOOP_ADD:
+    DEC %ix
+ST_ADD:
+    MOV *F000 %a      (Copy a digit from operand A to the A register.)
+    ADD *F004 %a      (Add the value of operand B to the A register; if the   )
+                      (  carry flag was set before the addition, increment    )
+                      (  the result by one. Afterwards, set the carry flag to )
+                      (  reflect whether the result is greater than 15.       )
+
+    MOV %a *F008      (Copy the result to the display.)
+
+    CMP 0x0 %ix       (Loop if the index register is not 0.)
+    JMP Z=0 .LOOP_ADD
+
+    DEC %b
+    CMP 0 %b
+    JMP Z=1 .HALT
+
+ROTATE:
+    MOV 3 %ix
+    JMP 1=1 .ST_ROT
+LOOP_ROT:
+    DEC %ix
+ST_ROT:
+    MOV *F004 *F000
+    MOV *F008 *F004
+    MOV *F00C *F008
+
+    CMP 0 %ix
+    JMP Z=0 .LOOP_ROT
+    
+    JMP 1=1 .ADD
+
+HALT:
+    OR 2 %s1
