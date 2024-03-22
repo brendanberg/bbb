@@ -1,0 +1,78 @@
+ Opcodes
+┌─────┬─────┬─────┬─────┐
+│ NOP │ INC │ DEC │ ADD │
+├─────┼─────┼─────┼─────┤
+│ SUB │ RLC │ RRC │ AND │
+├─────┼─────┼─────┼─────┤
+│ OR  │ XOR │ CMP │ PSH │
+├─────┼─────┼─────┼─────┤
+│ POP │ JMP │ JSR │ MOV │
+└─────┴─────┴─────┴─────┘
+
+
+
+
+
+ Physical Registers          ┌───► Physical Registers
+┌─────┬─────┬─────┬─────┐    │    ┌───────────────────────┐
+│  A  │  B  │  C  │  D  │    │    │  A    B    C    D     │   General purpose registers A through
+├─────┼─────┼─────┼─────┤    │    │ ┌────┬────┬────┬────┐ │   F are 4-bit words that can be
+│  E  │  F  │ S0  │ S1  │ ───┘    │ │    │    │    │    │ │
+├─────┼─────┼─────┼─────┤         │ └────┴────┴────┴────┘ │
+│ TA  │ IX  │ IV  │ SP  │         │                       │
+├─────┼─────┴─────┴─────┘         │  E    F    S0   S1    │
+│ PC  │  Virtual Registers        │ ┌────┬────┬────┬────┐ │
+└─────┘ ┌─────┬─────┬─────┐       │ │    │    │TAHI│OCNZ│ │
+        │ CV  │ MD  │ MX  │       │ └────┴────┴────┴────┘ │
+        └─────┴─────┴─────┘       │                       │
+                                  │  TA                   │
+                 │                │ ┌───────────────────┐ │
+                 │                │ │    |    |    |    │ │
+ ┌───────────────┘                │ └───────────────────┘ │
+ │                                │                       │
+ │                                │  IX                   │
+ ▼                                │ ┌───────────────────┐ │
+                                  │ │    |    |    |    │ │
+ Virtual Registers                │ └───────────────────┘ │
+┌─ ─── ─── ─── ─── ─── ─┐         │                       │
+│  CV                   │         │  IV                   │
+  ┌────┬──────────────┐           │ ┌───────────────────┐ │
+│ │    │    |    |    │ │         │ │    |    |    |    │ │
+│ └────┴──────────────┘ │         │ └───────────────────┘ │
+                                  │                       │
+│  MD                   │         │  SP                   │
+│ ┌───────────────────┐ │         │ ┌───────────────────┐ │
+  │    |    |    |    │           │ │    |    |    |    │ │
+│ └───────────────────┘ │         │ └───────────────────┘ │
+│                       │         │                       │
+   MX                             │  PC                   │
+│ ┌───────────────────┐ │         │ ┌───────────────────┐ │
+│ │    |    |    |    │ │         │ │    |    |    |    │ │
+  └───────────────────┘           │ └───────────────────┘ │
+│                       │         │                       │
+└─ ─── ─── ─── ─── ─── ─┘         └───────────────────────┘
+
+ Virtual registers indicate that
+ the instruction is extended with
+ additional bytes of data containing
+ either a constant value or a memory
+ address.
+
+ The constant value virtual register
+ is only valid as the source argument
+ to an opcode. The number of words
+ to read is determined by the size of
+ the destination register.
+
+ The memory direct register indicates
+ that the instruction's extended source
+ or destination value is a memory ad
+ address whose contents should be read
+ or written.
+
+ The memory indexed register indicates
+ that the extended source or destination
+ value is an offset to be added to the
+ index register and the result is the
+ address of the memory location to be
+ read or written.

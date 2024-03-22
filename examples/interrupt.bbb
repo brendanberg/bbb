@@ -1,0 +1,35 @@
+(Interrupt demo: the program stays in a tight loop until a keyboard interrupt)
+(moves execution to the keyboard routine starting at the interrupt vector.)
+
+#data 0020 1000 0030
+
+#org 0020
+MAIN:
+    NOP
+    JMP 1=1 .MAIN       (Rapidly do nothing.)
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    OR 2 %s1            (If we pop out of the interrupt handler in the wrong  )
+                        (  place, this will halt the machine before reaching  )
+                        (  the keyboard interrupt routine.)
+
+#org 0030
+KEYBOARD:               (Keyboard interrupt handler:)
+    PSH %a              (Save the previous value of the A register.)
+    MOV 0 %a            (Clear the A register.)
+    OR @FFF0 %a         (Logical or the set of keyboard bitmap locations into )
+    OR @FFF1 %a         (  the A register to determine if this is a key up or )
+    OR @FFF2 %a         (  key down event.)
+    OR @FFF3 %a
+    JMP Z=1 .KBD_FIN    (Skip the move instructions if it was a key up event.)
+    MOV @FFF0 @F000
+    MOV @FFF1 @F001
+    MOV @FFF2 @F002
+    MOV @FFF3 @F003
+KBD_FIN:
+    POP %a              (Restore the contents of the A register.)
+    AND 14 %s1          (Clear the interrupt flag.)
+    POP %pc             (Return from the subroutine.)

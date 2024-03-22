@@ -11,7 +11,7 @@ uint16_t prev_keymap = 0;
 #define READ_NEXT(x) (*(x)++)
 #define READ_QUARTET(x) ((uint16_t)(*(x)++ << 12 | *(x)++ << 8 | *(x)++ << 4 | *(x)++))
 
-#define SET_HALT(x) ((x) |= 0x20)
+#define SET_HALT(x) ((x) |= FLAG_H)
 #define SET_CMP(x, lhs, rhs) \
     ((x) = (uint8_t)((x) & 0xFC) | (uint8_t)(((lhs) == (rhs)) << 1) | ((lhs) > (rhs)))
 // TODO: Does the lhs > rhs comparison need to be aware of signedness...
@@ -19,8 +19,8 @@ uint16_t prev_keymap = 0;
     ((x) = (uint8_t)((x) & 0xFC) | (uint8_t)(((val) ? 0 : 1) << 1) | ((uint8_t)(val) < 0 ? 1 : 0))
 #define SET_N4(x, val) ((x) = (uint8_t)((x) & 0xFE) | ((val) & 0x08 ? 1 : 0))
 #define SET_N16(x, val) ((x) = (uint8_t)((x) & 0xFE) | ((val) & 0x8000 ? 1 : 0))
-#define SET_O(x, val) ((x) = (uint8_t)((x) & 0xF7) | ((val) ? 0x08 : 0))
-#define SET_C(x, val) ((x) = (uint8_t)((x) & 0xFB) | ((val) ? 0x04 : 0))
+#define SET_O(x, val) ((x) = (uint8_t)((x) & ~FLAG_O) | ((val) ? FLAG_O : 0))
+#define SET_C(x, val) ((x) = (uint8_t)((x) & ~FLAG_C) | ((val) ? FLAG_C : 0))
 // General purpose registers are 4-bit. Special registers are 16-bit
 static inline void machine_instr_fetch(machine *m);
 static inline void machine_instr_decode(machine *m);
@@ -47,7 +47,7 @@ static inline uint16_t machine_get_value(machine *m, Register src, uint16_t src_
     case REGISTER_TA:
         return (unsigned short)(m->ta - m->memory->data);
     case REGISTER_S0:
-        return m->flags & 0x0F;
+        return m->flags & MASK_S0;
     case REGISTER_S1:
         return m->flags >> 4;
     default:
@@ -58,7 +58,7 @@ static inline uint16_t machine_get_value(machine *m, Register src, uint16_t src_
 static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext, uint16_t value) {
     switch (dst) {
     case REGISTER_CV:
-        m->flags |= 0x20;
+        m->flags |= FLAG_H;
         break;
     case REGISTER_MD:
         memory_write(m->memory, dst_ext, value & 0xF);
@@ -85,7 +85,7 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
         m->flags = (m->flags & 0xB0) | (value & 0x0F) | 0x80;
         break;
     case REGISTER_S1:
-        m->flags = (m->flags & 0x8F) | (uint8_t)((value & 0x03) << 4) | 0x80;
+        m->flags = (m->flags & 0x8F) | (uint8_t)((value & 0x03) << 4) | FLAG_1;
         break;
     default:
         m->registers[dst] = value & 0xF;
@@ -187,18 +187,18 @@ static inline void machine_io(machine *m) {
     uint16_t keymap = kbio_get_keymap(&meta);
 
     if (meta == 'q') {
-        m->flags |= 0x20;  // Set halt flag
+        m->flags |= FLAG_H;  // Set halt flag
         return;
     }
-
-    if (keymap != prev_keymap && (m->flags & 0x10) == 0) {
+    //  && (m->flags & FLAG_I) == 0
+    if (keymap != prev_keymap && !m->int_mask) {
         m->memory->data[0xFFF0] = keymap & 0x000F;
         m->memory->data[0xFFF1] = (keymap & 0x00F0) >> 4;
         m->memory->data[0xFFF2] = (keymap & 0x0F00) >> 8;
         m->memory->data[0xFFF3] = (keymap & 0xF000) >> 12;
 
         prev_keymap = keymap;
-        m->flags |= 0x10;  // Set interrupt flag
+        m->flags |= FLAG_I;  // Set interrupt flag
     }
 }
 
@@ -241,14 +241,14 @@ static inline void machine_interrupt_check(machine *m) {
         return;
     } else {
         m->int_mask = true;
-        uint16_t dest = (uint16_t)(m->iv - m->memory->data);
+        // uint16_t dest = (uint16_t)(m->iv - m->memory->data);
 
         uint16_t pc = (uint16_t)(m->pc - m->memory->data);
         *(m->sp)++ = pc & 0xF;
         *(m->sp)++ = (pc >> 4) & 0xF;
         *(m->sp)++ = (pc >> 8) & 0xF;
         *(m->sp)++ = (pc >> 12) & 0xF;
-        m->pc = m->memory->data + dest;
+        m->pc = m->iv;  // m->memory->data + dest;
     }
 }
 
@@ -407,8 +407,8 @@ static inline void machine_instr_execute(machine *m) {
         uint16_t value = machine_get_value(m, m->dst, m->dst_ext);
         uint8_t flags = m->flags;
         // TODO: WTF is going on here?
-        m->flags = (uint8_t)((value & 0xA000) | (flags & 0xFB));
-        value = (uint16_t)(value << 1) | ((flags & 0x4) >> 2);
+        m->flags = (uint8_t)((value & 0xA000) | (flags & ~FLAG_C));
+        value = (uint16_t)(value << 1) | ((flags & FLAG_C) >> 2);
         machine_set_value(m, m->dst, m->dst_ext, value);
         SET_ZN(m->flags, value);
         break;
@@ -417,8 +417,8 @@ static inline void machine_instr_execute(machine *m) {
         uint16_t value = machine_get_value(m, m->dst, m->dst_ext);
         uint8_t flags = m->flags;
         // TODO: WTF again?
-        m->flags = (value & 0x1) | (flags & 0xFB);
-        value = (value >> 1) | (uint16_t)((flags & 0x4) << 13);
+        m->flags = (value & 0x1) | (flags & ~FLAG_C);
+        value = (value >> 1) | (uint16_t)((flags & FLAG_C) << 13);
         machine_set_value(m, m->dst, m->dst_ext, value);
         SET_ZN(m->flags, value);
         break;
@@ -483,25 +483,30 @@ static inline void machine_instr_execute(machine *m) {
         break;
     }
     case PSH: {
-        // TODO: Push 4 values if the source is 16 bit?
-        *(m->sp)++ = machine_get_value(m, m->src, m->src_ext) & 0xF;
+        uint16_t value = machine_get_value(m, m->src, m->src_ext);
+        *(m->sp)++ = value & 0xF;
+
+        if (m->src >= REGISTER_PC && m->src <= REGISTER_TA) {
+            *(m->sp)++ = (value >> 4) & 0xF;
+            *(m->sp)++ = (value >> 8) & 0xF;
+            *(m->sp)++ = (value >> 12) & 0xF;
+        }
         break;
     }
     case POP: {
-        uint16_t value = *(m->sp)-- & 0xF;
-        // TODO: Pop 4 values if the destination is 16 bit?
-        if (m->dst >= REGISTER_PC) {
-            if (m->int_mask && ~m->flags & 0x10) {
-                // The interrupt mask has been cleared by software
-                // so we can unmask the interrupt
-                m->int_mask = false;
-            }
-            // Moving a 4-bit value into a 16-bit register.
-            // Combine the masked src and dst values
-            uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
-            machine_set_value(m, m->dst, m->dst_ext, (dst & 0xFFF0) | value);
-        } else {
-            machine_set_value(m, m->dst, m->dst_ext, value);
+        uint16_t value = *(--m->sp) & 0xF;
+
+        if (m->dst >= REGISTER_PC && m->dst <= REGISTER_TA) {
+            value = value << 4 | *(--m->sp) & 0xF;
+            value = value << 4 | *(--m->sp) & 0xF;
+            value = value << 4 | *(--m->sp) & 0xF;
+        }
+        machine_set_value(m, m->dst, m->dst_ext, value);
+
+        if (m->int_mask && ~m->flags & FLAG_I) {
+            // The interrupt mask has been cleared by software
+            // so we can unmask the interrupt
+            m->int_mask = false;
         }
         break;
     }
@@ -539,11 +544,10 @@ static inline void machine_instr_execute(machine *m) {
         break;
     }
     case MOV: {
-        uint16_t value = 0;
+        uint16_t value = machine_get_value(m, m->src, m->src_ext);
 
         if (m->dst >= REGISTER_PC && m->dst < REGISTER_CV) {
             // The destination is a 16-bit register
-            value = machine_get_value(m, m->src, m->src_ext);
             uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
 
             if (m->src < REGISTER_PC || m->src > REGISTER_CV) {
@@ -555,7 +559,6 @@ static inline void machine_instr_execute(machine *m) {
             machine_set_value(m, m->dst, m->dst_ext, value);
             //     // Moving
         } else {
-            value = machine_get_value(m, m->src, m->src_ext);
             // fprintf(stderr, "machine_get_value(m, %X, %X) = %d\n", m->src, m->src_ext, value);
             machine_set_value(m, m->dst, m->dst_ext, value);
         }

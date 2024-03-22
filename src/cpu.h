@@ -6,6 +6,20 @@
 
 #define CPU_MAX_ADDRESS 64 * 1024
 
+typedef enum {
+    FLAG_N = 0x01,
+    FLAG_Z = 0x02,
+    FLAG_C = 0x04,
+    FLAG_O = 0x08,
+    FLAG_I = 0x10,
+    FLAG_H = 0x20,
+    FLAG_0 = 0x40,
+    FLAG_1 = 0x80
+} StatusFlag;
+
+#define MASK_S0 0x0F
+#define MASK_S1 0xF0
+
 typedef enum { STATE_RUN, STATE_HALT } MachineState;
 
 typedef enum {

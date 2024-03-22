@@ -1,0 +1,59 @@
+(Simple function/subroutine implementation with stack semantics)
+
+#data 0020 1000 00A0 0000
+
+#org 0100
+#data 1234            (Operand A)
+#data ABCD            (Operand B)
+
+#org 0020
+
+    MOV 0x0100 %ta
+    PSH %ta
+    MOV 0x0104 %ta
+    PSH %ta
+    JSR 1=1 .TTT
+    OR 2 %s1
+TTT:
+    MOV %sp %ix
+    MOV *FFFB @F00C     (With wrap-around indexing, FFFB is the same as -5.)
+    MOV *FFFA @F00D
+    MOV *FFF9 @F00E
+    MOV *FFF8 @F00F
+    MOV *FFF7 @F008
+    MOV *FFF6 @F009
+    MOV *FFF5 @F00A
+    MOV *FFF4 @F00B
+    POP %pc
+
+T2:
+    POP %ta
+    POP @C000
+    POP @C001
+    POP @C002
+    POP @C003
+    POP @C004
+    POP @C005
+    POP @C006
+    POP @C007
+    PSH %ta
+ADD:
+    
+    MOV 3 %ix         (We're going to index from the rightmost, or least      )
+    JMP 1=1 .START    (  significant position and work our way to the left.   )
+LOOP:
+    DEC %ix
+START:
+    MOV *0100 %a      (Copy a digit from operand A to the A register.)
+    ADD *0104 %a      (Add the value of operand B to the A register; if the   )
+                      (  carry flag was set before the addition, increment    )
+                      (  the result by one. Afterwards, set the carry flag to )
+                      (  reflect whether the result is greater than 15.       )
+
+    MOV %a *F008      (Copy the result to the display.)
+
+    CMP 0x0 %ix       (Loop if the index register is not 0.)
+    JMP Z=0 .LOOP
+    POP %pc
+
+DISPLAY:
