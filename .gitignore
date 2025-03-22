@@ -3,3 +3,9 @@
 *.out
 
 build/
+
+# The bbb executable gets created in the root directory
+bbb
+
+# Ignore image files created by bbb
+*.img
