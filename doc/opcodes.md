@@ -195,6 +195,7 @@ This mechanism also allows the `JMP` instruction to perform an unconditional jum
 
 > [!NOTE]
 > The **bbb** assembler provides mnemonics for jump conditions that are easier to remember. For example, insetad of having to work out that to jump if carry is set, the condition operand should be `10` (binary `1010`), the programmer may write `C=1`. Likewise, jump if not zero would be written `Z=0`.
+>
 > This also simplifies unconditional jumps and fall throughs, since it's possible to write `0=0`, `0=1`, `1=0`, and `1=1`.
 
 | Example | Description                                                               |
