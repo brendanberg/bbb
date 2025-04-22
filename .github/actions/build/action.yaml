@@ -15,5 +15,7 @@ runs:
       env:
         TARGET: ${{ inputs.target }}
       run: |
+        mkdir -p build
+        pwd >> $GITHUB_STEP_SUMMARY
         make $TARGET
         echo "### :sparkles: Successfully built target $TARGET :sparkles:" >> $GITHUB_STEP_SUMMARY
