@@ -28,7 +28,7 @@ table *table_init() {
 }
 
 void table_resize_syms(table *t, size_t offset) {
-    t->syms = realloc(t->syms, t->syms_length * 2);
+    t->syms = realloc(t->syms, t->syms_length * 2 * sizeof(symbol));
 
     if (!t->syms) {
         fprintf(stderr, "error: could not allocate storage");
@@ -40,7 +40,7 @@ void table_resize_syms(table *t, size_t offset) {
 }
 
 void table_resize_refs(table *t, size_t offset) {
-    t->refs = realloc(t->refs, t->refs_length * 2);
+    t->refs = realloc(t->refs, t->refs_length * 2 * sizeof(reference));
 
     if (!t->refs) {
         fprintf(stderr, "error: could not allocate storage");
@@ -52,7 +52,7 @@ void table_resize_refs(table *t, size_t offset) {
 }
 
 void table_resize_labels(table *t, size_t offset) {
-    t->labels = realloc(t->labels, t->labels_length * 2);
+    t->labels = realloc(t->labels, t->labels_length * 2 * sizeof(char));
 
     if (!t->labels) {
         fprintf(stderr, "error: could not allocate storage");
