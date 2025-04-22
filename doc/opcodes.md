@@ -2,24 +2,24 @@
 
 The _bbb_ architecture has 16 opcodes, described in the following table.
 
-| Hex | Mnemonic | Description                                                         |
-| --- | -------- | ------------------------------------------------------------------- |
-| 0x0 | NOP      | Do nothing                                                          |
-| 0x1 | INC      | Increment the contents of register or memory                        |
-| 0x2 | DEC      | Decrement the contents of register or memory                        |
-| 0x3 | RLC      | Rotate contents of <dst> left through the carry status bit          |
-| 0x4 | RRC      | Rotate contents of <dst> right through the carry status bit         |
-| 0x5 | PSH      | Push contents of <src> onto the stack                               |
-| 0x6 | POP      | Pop top of stack and store in <dst>                                 |
-| 0x7 | MOV      | Place the contents of <src> in <dst>                                |
-| 0x8 | ADD      | Add contents of <src> and <dst> (with carry) and store in <dst>     |
-| 0x9 | SUB      | Subtract contents of <src> from <dst> (with borrow); store in <dst> |
-| 0xA | AND      | Logical AND contents of <src> and <dst> and store in <dst>          |
-| 0xB | OR       | Logical OR contents of <src> and <dst> and store in <dst>           |
-| 0xC | XOR      | Logical XOR contents of <src> and <dst> and store in <dst>          |
-| 0xD | CMP      | Compare contents of <src> and <dst> and update C and Z status bits  |
-| 0xE | JMP      | Jump to location specified by <dst>                                 |
-| 0xF | JSR      | Jump to subroutine specified by <dst>                               |
+| Hex   | Mnemonic | Description                                                         |
+| ----- | -------- | ------------------------------------------------------------------- |
+| `0x0` | NOP      | Do nothing                                                          |
+| `0x1` | INC      | Increment the contents of register or memory                        |
+| `0x2` | DEC      | Decrement the contents of register or memory                        |
+| `0x3` | RLC      | Rotate contents of <dst> left through the carry status bit          |
+| `0x4` | RRC      | Rotate contents of <dst> right through the carry status bit         |
+| `0x5` | PSH      | Push contents of <src> onto the stack                               |
+| `0x6` | POP      | Pop top of stack and store in <dst>                                 |
+| `0x7` | MOV      | Place the contents of <src> in <dst>                                |
+| `0x8` | ADD      | Add contents of <src> and <dst> (with carry) and store in <dst>     |
+| `0x9` | SUB      | Subtract contents of <src> from <dst> (with borrow); store in <dst> |
+| `0xA` | AND      | Logical AND contents of <src> and <dst> and store in <dst>          |
+| `0xB` | OR       | Logical OR contents of <src> and <dst> and store in <dst>           |
+| `0xC` | XOR      | Logical XOR contents of <src> and <dst> and store in <dst>          |
+| `0xD` | CMP      | Compare contents of <src> and <dst> and update C and Z status bits  |
+| `0xE` | JMP      | Jump to location specified by <dst>                                 |
+| `0xF` | JSR      | Jump to subroutine specified by <dst>                               |
 
 ## Opcodes and Operands
 
@@ -55,21 +55,21 @@ Increment the value in the specified register or memory location.
 - **Operands:** `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
 - **Flags:** Updates overflow, zero, and negative flags as appropriate
 
-### `DEC`
+### `DEC <dst>`
 
 Decrement the value in the specified register or memory location.
 
 - **Operands:** `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
 - **Flags:** Updates overflow, zero, and negative flags as appropriate
 
-### `RLC`
+### `RLC <dst>`
 
 Rotate the bits of the value in the specified register or memory location left through the carry status bit.
 
 - **Operands:** `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
 - **Flags:** Sets the carry flag to `<dst>`'s most significant bit. Updates overflow, zero, and negative flags as appropriate
 
-### `RRC`
+### `RRC <dst>`
 
 Rotate the bits of the value in the specified register or memory location right through the carry status bit.
 
@@ -112,7 +112,7 @@ Add contents of source and destination registers and store in the destination re
   `Z` – Sets zero flag if the sum is 0  
   `N` – Sets negative flag if the most significant bit is set
 
-### `SUB`
+### `SUB <src> <dst>`
 
 - **Operands:**
   `<src>` – General purpose register, CV, MD, MX  
@@ -123,7 +123,7 @@ Add contents of source and destination registers and store in the destination re
   `Z` – Sets zero flag if the sum is 0  
   `N` – Sets negative flag if the most significant bit is set
 
-### `AND`
+### `AND <src> <dst>`
 
 - **Operands:**
   `<src>` – General purpose register, CV, MD, MX  
@@ -134,7 +134,7 @@ Add contents of source and destination registers and store in the destination re
   `Z` – Sets zero flag if the sum is 0  
   `N` – Sets negative flag if the most significant bit is set
 
-### `OR`
+### `OR <src> <dst>`
 
 - **Operands:**
   `<src>` – General purpose register, CV, MD, MX  
@@ -145,7 +145,7 @@ Add contents of source and destination registers and store in the destination re
   `Z` – Sets zero flag if the sum is 0  
   `N` – Sets negative flag if the most significant bit is set
 
-### `XOR`
+### `XOR <src> <dst>`
 
 - **Operands:**
   `<src>` – General purpose register, CV, MD, MX  
@@ -183,58 +183,45 @@ Conditionally jump to the memory location indicated by the destination operand.
 
 The jump condition is a 4-bit value that defines which flag to test and the desired flag value. The three least-significant bits indicate which status flag will be used in the condition. The most significant bit is the value to test the flag against.
 
-For example, a `JMP` instruction with a condition operand of `1` (binary `0001`) will follow the branch if the zero flag (bit one of the status register pair) is not set. When combined with a `CMP` instruction, this allows us to construct the equivalent of a branch if not equal instruction:
+For example, a `JMP` instruction with a condition operand of `1` (binary `0001`) will follow the branch if the zero flag (bit one of the status register pair) is not set. When combined with a `CMP` instruction, this allows us to construct the equivalent of a branch if not equal instruction.
 
-| Example | Description                                                                      |
-| ------- | -------------------------------------------------------------------------------- |
-| `0 000` | Jump if the negative flag (status bit 0) is zero                                 |
-| `1 000` | Jump if the negative flag (status bit 0) is one                                  |
-| `0 001` | Jump if the zero flag is not set (can be used with `CMP` to branch if not equal) |
-| `0 110` | Jump if the constant zero flag is zero (unconditional jump)                      |
-| `1 110` | Jump if the constant zero flag is one (unconditional fall through)               |
-| `0 111` | Jump if the constant one flag is zero (unconditional fall through)               |
-| `1 111` | Jump if the constant one flag is one (unconditional jump)                        |
+This mechanism also allows the `JMP` instruction to perform an unconditional jump, since testing against the constant zero and constant one flags will always produce the same result. Therefore `JMP 15 <addr>` and `JMP 6 <addr>` are both unconditional jumps, while `JMP 14 <addr>` and `JMP 7 <addr>` are both unconditional fall throughs.
 
-000 | 0 | Negative |
-001 | 1 | Zero |
-010 | 2 | Carry |
-011 | 3 | Overflow |
-100 | 4 | Interrupt |
-101 | 5 | Halt |
-110 | 6 | Constant zero |
-111 | 7 | Constant one |
+> [!NOTE]
+> The **bbb** assembler provides mnemonics for jump conditions that are easier to remember. For example, insetad of having to work out that to jump if carry is set, the condition operand should be `10` (binary `1010`), the programmer may write `C=1`. Likewise, jump if not zero would be written `Z=0`.
+> This also simplifies unconditional jumps and fall throughs, since it's possible to write `0=0`, `0=1`, `1=0`, and `1=1`.
 
-1
-2
-3
-4
-5
-6
-7
-
-| `X` | `100` | Jump if the interrupt flag equals `X` |
-| `X` | `101` | Jump if the halt flag equals `X` |
-| `0` | `110` | Unconditional jump |
-| `1` | `110` | Unconditional fall through |
-| `0` | `111` | Unconditional fall through |
-| `1` | `111` | Unconditional jump |
-
-value is a 4-bit value in the form F I I I, where
-// F is the desired flag value and I I I is the offset into the S
-// register.
-//
-// For example, to jump if the zero flag is set, the jump specifier
-// value would be 1001, meaning execution will continue at the target
-// address if bit 1 of the S register is 1.
+| Example | Description                                                               |
+| ------- | ------------------------------------------------------------------------- |
+| `0 000` | Jump if the negative (N) flag (status bit 0) is not set                   |
+| `1 000` | Jump if the negative (N) flag (status bit 0) is set                       |
+| `0 001` | Jump if the zero (Z) flag is not set                                      |
+| `1 001` | Jump if the zero (Z) flag is set                                          |
+| `0 010` | Jump if the carry (C) flag is not set                                     |
+| `1 010` | Jump if the carry (C) flag is set                                         |
+| `0 011` | Jump if the overflow (O) flag is not set                                  |
+| `1 011` | Jump if the overflow (O) flag is set                                      |
+| `0 100` | Jump if the interrupt (I) flag is not set                                 |
+| `1 100` | Jump if the interrupt (I) flag is set                                     |
+| `0 101` | Jump if the halt (H) flag is not set                                      |
+| `1 101` | Jump if the halt (H) flag is set                                          |
+| `0 110` | Jump if the constant zero (0) flag is not set (unconditional jump)        |
+| `1 110` | Jump if the constant zero (0) flag is set (unconditional fall through)    |
+| `0 111` | Jump if the constant one (1) flag is not set (unconditional fall through) |
+| `1 111` | Jump if the constant one (1) flag is set (unconditional jump)             |
 
 - **Operands:**
-  `<cond>` – Four-bit jump specifier to indicate branch type  
-  `<dst>` – General purpose register, MD, MX
+  `<cond>` – Four bit jump specifier to indicate branch type  
+  `<addr>` – Sixteen bit literal address
 - **Flags:** No change
 
 ### `JSR <cond> <dst>`
 
+Conditionally enter the subroutine at the memory location indicated by the destination operand. Jumping to a subroutine involves storing register values on the stack. Since there is no return opcode, the programmer must explicitly restore register values before jumping back to the original control flow.
+
+The jump condition is a 4-bit value that defines which flag to test and the desired flag value. The three least-significant bits indicate which status flag will be used in the condition. The most significant bit is the value to test the flag against.
+
 - **Operands:**
-  `<cond>` – Four-bit jump specifier to indicate branch type  
-  `<dst>` – General purpose register, MD, MX
+  `<cond>` – Four bit jump specifier to indicate branch type  
+  `<addr>` – Sixteen bit literal address
 - **Flags:**  No change
