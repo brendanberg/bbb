@@ -17,6 +17,6 @@ runs:
       run: |
         echo "### :microscope: Running tests..." >> $GITHUB_STEP_SUMMARY
         echo "```" >> $GITHUB_STEP_SUMMARY
-        echo "test" >> $GITHUB_STEP_SUMMARY
+        ls -la >> $GITHUB_STEP_SUMMARY
         ./test >> $GITHUB_STEP_SUMMARY
         echo "```" >> $GITHUB_STEP_SUMMARY
