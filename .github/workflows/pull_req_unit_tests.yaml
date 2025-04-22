@@ -12,6 +12,8 @@ jobs:
     # name: "Build Tests"
     runs-on: ubuntu-latest
     steps:
+      - name: Check out latest commit
+        uses: actions/checkout@v4
       - name: Build Tests
         uses: "./.github/actions/build"
         with:
