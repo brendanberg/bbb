@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-test:
-    # name: "Build Tests"
+    name: "Build and Run Unit Tests"
     runs-on: ubuntu-latest
     steps:
       - name: Check out latest commit
