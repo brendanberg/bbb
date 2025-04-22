@@ -1,0 +1,19 @@
+name: Build
+description: Build bbb with specified target
+
+inputs:
+  target:
+    description: "Target rule to use in call to `make`"
+    required: false
+    default: "default"
+
+runs:
+  using: composite
+  steps:
+    - name: Build
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+      run: |
+        make $TARGET
+        echo "### :sparkles: Successfully built target $TARGET :sparkles:" >> $GITHUB_STEP_SUMMARY

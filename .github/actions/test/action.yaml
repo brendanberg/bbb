@@ -1,0 +1,21 @@
+name: Test
+description: Run unit test suite
+
+# inputs:
+#   target:
+#     description: "Target rule to use in call to `make`"
+#     required: false
+#     default: "default"
+
+runs:
+  using: composite
+  steps:
+    - name: Test
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+      run: |
+        echo "### :microscope: Running tests..." >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
+        ./test >> $GITHUB_STEP_SUMMARY
+        echo "```" >> $GITHUB_STEP_SUMMARY
