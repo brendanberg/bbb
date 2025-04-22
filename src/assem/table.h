@@ -40,7 +40,7 @@ reference *table_ref_pop(table *t);
 void table_ref_add(table *t, char *label, uint8_t *offset);
 
 void table_print(table *t);
-
+void table_snprintf(table *t, char *s, size_t n);
 void table_free(table *t);
 
 #endif

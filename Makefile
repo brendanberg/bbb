@@ -6,24 +6,24 @@ OPTIONS=-Wall
 # -pedantic -Wall -Wextra -Werror -Wshadow -Wconversion -Wunreachable-code
 COMPILE=$(COMPILER) $(OPTIONS)
 
-COMMON_HEADERS = $(SRC)/cpu.h $(SRC)/io.h $(SRC)/memory.h
-ASSEM_HEADERS = $(SRC)/assem.h $(SRC)/table.h
+COMMON_HEADERS = $(SRC)/machine/cpu.h $(SRC)/machine/io.h $(SRC)/machine/memory.h
+ASSEM_HEADERS = $(SRC)/assem/assem.h $(SRC)/assem/table.h
 
 default: build bbb
 
-$(BUILD)/machine.o: $(SRC)/cpu.c $(COMMON_HEADERS)
+$(BUILD)/machine.o: $(SRC)/machine/cpu.c $(COMMON_HEADERS)
 	$(COMPILE) -c $< -o $@
 
-$(BUILD)/memory.o: $(SRC)/memory.c $(COMMON_HEADERS)
+$(BUILD)/memory.o: $(SRC)/machine/memory.c $(COMMON_HEADERS)
 	$(COMPILE) -c $< -o $@
 
-$(BUILD)/table.o: $(SRC)/table.c $(ASSEM_HEADERS)
+$(BUILD)/table.o: $(SRC)/assem/table.c $(ASSEM_HEADERS)
 	$(COMPILE) -c $< -o $@
 
-$(BUILD)/assem.o: $(SRC)/assem.c $(ASSEM_HEADERS)
+$(BUILD)/assem.o: $(SRC)/assem/assem.c $(ASSEM_HEADERS)
 	$(COMPILE) -c $< -o $@
 
-$(BUILD)/io.o: $(SRC)/io.c $(COMMON_HEADERS)
+$(BUILD)/io.o: $(SRC)/machine/io.c $(COMMON_HEADERS)
 	$(COMPILE) -c $< -o $@
 
 bbb: $(BUILD)/machine.o $(BUILD)/memory.o $(BUILD)/io.o $(BUILD)/table.o $(BUILD)/assem.o $(SRC)/main.c
@@ -31,6 +31,12 @@ bbb: $(BUILD)/machine.o $(BUILD)/memory.o $(BUILD)/io.o $(BUILD)/table.o $(BUILD
 
 build:
 	mkdir -p $(BUILD)
+
+test: $(BUILD)/munit.o $(BUILD)/machine.o $(BUILD)/memory.o $(BUILD)/io.o $(BUILD)/table.o $(BUILD)/assem.o $(SRC)/test/* $(SRC)/test.c
+	$(COMPILE) $^ -o $@
+
+$(BUILD)/munit.o: $(SRC)/munit/munit.c $(SRC)/munit/munit.h
+	$(COMPILE) -c $< -o $@
 
 clean:
 	rm -r $(BUILD)/*

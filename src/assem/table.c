@@ -35,7 +35,8 @@ void table_resize_syms(table *t, size_t offset) {
         exit(EXIT_FAILURE);
     }
 
-    t->syms_end = t->syms + offset;
+    t->syms_length = t->syms_length * 2;
+    t->syms_end = t->syms + offset * sizeof(symbol);
 }
 
 void table_resize_refs(table *t, size_t offset) {
@@ -46,7 +47,8 @@ void table_resize_refs(table *t, size_t offset) {
         exit(EXIT_FAILURE);
     }
 
-    t->refs_end = t->refs + offset;
+    t->refs_length = t->refs_length * 2;
+    t->refs_end = t->refs + offset * sizeof(reference);
 }
 
 void table_resize_labels(table *t, size_t offset) {
@@ -57,7 +59,8 @@ void table_resize_labels(table *t, size_t offset) {
         exit(EXIT_FAILURE);
     }
 
-    t->labels_end = t->labels + offset;
+    t->labels_length = t->labels_length * 2;
+    t->labels_end = t->labels + offset * sizeof(char);
 }
 
 char *table_label_find(table *t, char *label) {
@@ -84,7 +87,7 @@ char *table_label_push(table *t, char *label) {
 }
 
 void table_symbol_push(table *t, symbol *s) {
-    size_t offset = t->syms_end - t->syms;
+    size_t offset = (t->syms_end - t->syms) / sizeof(symbol);
 
     if (offset >= t->syms_length) {
         table_resize_syms(t, offset);
@@ -175,6 +178,44 @@ void table_print(table *t) {
         printf("%s%s", l == t->labels ? "" : ", ", l);
     }
     printf("\n");
+}
+
+void table_snprintf(table *t, char *str, size_t n) {
+    size_t len;
+    len = snprintf(str, n, "SYMBOLS\n-------\n");
+    str = str + len;
+    n = n - len;
+
+    for (symbol *s = t->syms; s < t->syms_end; s += sizeof(symbol)) {
+        if (s->label) {
+            len = snprintf(str, n, "%s: %zu\n", s->label, s->address);
+            str = str + len;
+            n = n - len;
+        }
+    }
+
+    len = snprintf(str, n, "\nREFERENCES\n----------\n");
+    str = str + len;
+    n = n - len;
+
+    for (reference *r = t->refs; r < t->refs_end; r += sizeof(reference)) {
+        if (r->label) {
+            len = snprintf(str, n, "%s: %p\n", r->label, r->offset);
+            str = str + len;
+            n = n - len;
+        }
+    }
+
+    len = snprintf(str, n, "\nLABELS\n------\n");
+    str = str + len;
+    n = n - len;
+
+    for (char *l = t->labels; l < t->labels_end - 1; l += strlen(l) + 1) {
+        len = snprintf(str, n, "%s%s", l == t->labels ? "" : ", ", l);
+        str = str + len;
+        n = n - len;
+    }
+    snprintf(str, n, "\n");
 }
 
 void table_free(table *t) {

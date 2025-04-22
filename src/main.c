@@ -1,14 +1,15 @@
 // #include <unistd.h>
+#include "assem/assem.h"
+#include "machine/cpu.h"
 #include <memory.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "assem.h"
-#include "cpu.h"
 
 #define MAX_ADDRESS (64 * 1024)
-#define USAGE_STRING "usage: %s assemble SOURCE_FILE IMAGE\n       %s run IMAGE\n"
+#define USAGE_STRING                                                           \
+    "usage: %s assemble SOURCE_FILE IMAGE\n       %s run IMAGE\n"
 
 int bbb_assemble(char *source_name, FILE *source, FILE *image) {
     if (fseek(source, 0L, SEEK_END) != 0) {

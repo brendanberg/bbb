@@ -4,8 +4,9 @@
 
 build/
 
-# The bbb executable gets created in the root directory
+# The bbb and test executables get created in the root directory
 bbb
+test
 
 # Ignore image files created by bbb
 *.img
