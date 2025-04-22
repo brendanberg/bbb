@@ -52,49 +52,55 @@ Do nothing for once clock cycle.
 
 Increment the value in the specified register or memory location.
 
-- **Operands:** `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
+- **Operands:**  
+  `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
 - **Flags:** Updates overflow, zero, and negative flags as appropriate
 
 ### `DEC <dst>`
 
 Decrement the value in the specified register or memory location.
 
-- **Operands:** `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
+- **Operands:**  
+  `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
 - **Flags:** Updates overflow, zero, and negative flags as appropriate
 
 ### `RLC <dst>`
 
 Rotate the bits of the value in the specified register or memory location left through the carry status bit.
 
-- **Operands:** `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
+- **Operands:**  
+  `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
 - **Flags:** Sets the carry flag to `<dst>`'s most significant bit. Updates overflow, zero, and negative flags as appropriate
 
 ### `RRC <dst>`
 
 Rotate the bits of the value in the specified register or memory location right through the carry status bit.
 
-- **Operands:** `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
+- **Operands:**  
+  `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
 - **Flags:** Sets the carry flag to `<dst>`'s least significant bit. Updates overflow, zero, and negative flags as appropriate
 
 ### `PSH <src>`
 
 Place the value in the specified register or memory location into the memory location referenced in the stack pointer register.
 
-- **Operands:** `<src>` – General purpose register, program counter, constant, or memory location
+- **Operands:**  
+  `<src>` – General purpose register, program counter, constant, or memory location
 - **Flags:** No change
 
 ### `POP <dst>`
 
 Place the value in the memory location referenced by the stack pointer register into the specified destination register or memory location.
 
-- **Operands:** `<dst>` – General purpose register, program counter, or memory location
+- **Operands:**  
+  `<dst>` – General purpose register, program counter, or memory location
 - **Flags:** No change
 
 ### `MOV <src> <dst>`
 
 Read the value in the source register or memory location and place it in the destination register or memory location.
 
-- **Operands:**
+- **Operands:**  
   `<src>` – General purpose register, program counter, stack pointer, interrupt vector, index reigister, temporary address, constant or memory location  
   `<dst>` – General purpose register, PC, SP, IV, IX, TA, CV, MD, MX
 - **Flags:** No change
@@ -103,10 +109,10 @@ Read the value in the source register or memory location and place it in the des
 
 Add contents of source and destination registers and store in the destination register.
 
-- **Operands:**
+- **Operands:**  
   `<src>` – General purpose register, CV, MD, MX  
   `<dst>` – General purpose register, MD, MX
-- **Flags:**
+- **Flags:**  
   `O` – Sets overflow if...  
   `C` – Sets carry flag if ...  
   `Z` – Sets zero flag if the sum is 0  
@@ -114,10 +120,10 @@ Add contents of source and destination registers and store in the destination re
 
 ### `SUB <src> <dst>`
 
-- **Operands:**
+- **Operands:**  
   `<src>` – General purpose register, CV, MD, MX  
   `<dst>` – General purpose register, MD, MX
-- **Flags:**
+- **Flags:**  
   `O` – Sets overflow if...  
   `C` – Sets carry flag if ...  
   `Z` – Sets zero flag if the sum is 0  
@@ -125,10 +131,10 @@ Add contents of source and destination registers and store in the destination re
 
 ### `AND <src> <dst>`
 
-- **Operands:**
+- **Operands:**  
   `<src>` – General purpose register, CV, MD, MX  
   `<dst>` – General purpose register, MD, MX
-- **Flags:**
+- **Flags:**  
   `O` – No change  
   `C` – No change  
   `Z` – Sets zero flag if the sum is 0  
@@ -136,10 +142,10 @@ Add contents of source and destination registers and store in the destination re
 
 ### `OR <src> <dst>`
 
-- **Operands:**
+- **Operands:**  
   `<src>` – General purpose register, CV, MD, MX  
   `<dst>` – General purpose register, MD, MX
-- **Flags:**
+- **Flags:**  
   `O` – No change  
   `C` – No change  
   `Z` – Sets zero flag if the sum is 0  
@@ -147,10 +153,10 @@ Add contents of source and destination registers and store in the destination re
 
 ### `XOR <src> <dst>`
 
-- **Operands:**
+- **Operands:**  
   `<src>` – General purpose register, CV, MD, MX  
   `<dst>` – General purpose register, MD, MX
-- **Flags:**
+- **Flags:**  
   `O` – No change  
   `C` – No change  
   `Z` – Sets zero flag if the sum is 0  
@@ -168,10 +174,10 @@ If the values are equal, the zero flag will be set. In all other cases, the zero
 | 1   | 0   | Source equals destination                      |
 | 0   | 1   | Source is less than destination                |
 
-- **Operands:**
+- **Operands:**  
   `<src>` – General purpose register, CV, MD, MX  
   `<dst>` – General purpose register, MD, MX
-- **Flags:**
+- **Flags:**  
   `O` – No change  
   `C` – No change  
   `Z` – Sets zero flag if the sum is 0  
@@ -210,7 +216,7 @@ This mechanism also allows the `JMP` instruction to perform an unconditional jum
 | `0 111` | Jump if the constant one (1) flag is not set (unconditional fall through) |
 | `1 111` | Jump if the constant one (1) flag is set (unconditional jump)             |
 
-- **Operands:**
+- **Operands:**  
   `<cond>` – Four bit jump specifier to indicate branch type  
   `<addr>` – Sixteen bit literal address
 - **Flags:** No change
@@ -221,7 +227,7 @@ Conditionally enter the subroutine at the memory location indicated by the desti
 
 The jump condition is a 4-bit value that defines which flag to test and the desired flag value. The three least-significant bits indicate which status flag will be used in the condition. The most significant bit is the value to test the flag against.
 
-- **Operands:**
+- **Operands:**  
   `<cond>` – Four bit jump specifier to indicate branch type  
   `<addr>` – Sixteen bit literal address
 - **Flags:**  No change
