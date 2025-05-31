@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define SYMS_LENGTH 64
 #define REFS_LENGTH 128
@@ -28,39 +29,54 @@ table *table_init() {
 }
 
 void table_resize_syms(table *t, size_t offset) {
-    t->syms = realloc(t->syms, t->syms_length * 2 * sizeof(symbol));
+    symbol *new_syms = realloc(t->syms, t->syms_length * 2 * sizeof(symbol));
 
-    if (!t->syms) {
+    if (!new_syms) {
         fprintf(stderr, "error: could not allocate storage");
         exit(EXIT_FAILURE);
+    }
+
+    if (new_syms != t->syms) {
+        t->syms = new_syms;
+        t->syms_end = t->syms + offset;
     }
 
     t->syms_length = t->syms_length * 2;
-    t->syms_end = t->syms + offset * sizeof(symbol);
 }
 
 void table_resize_refs(table *t, size_t offset) {
-    t->refs = realloc(t->refs, t->refs_length * 2 * sizeof(reference));
+    reference *new_refs =
+        realloc(t->refs, t->refs_length * 2 * sizeof(reference));
 
-    if (!t->refs) {
+    if (!new_refs) {
         fprintf(stderr, "error: could not allocate storage");
         exit(EXIT_FAILURE);
+    }
+
+    if (new_refs != t->refs) {
+        t->refs = new_refs;
+        t->refs_end = t->refs + offset;
     }
 
     t->refs_length = t->refs_length * 2;
-    t->refs_end = t->refs + offset * sizeof(reference);
+    t->refs_end = t->refs + offset;
 }
 
 void table_resize_labels(table *t, size_t offset) {
-    t->labels = realloc(t->labels, t->labels_length * 2 * sizeof(char));
+    char *new_labels = realloc(t->labels, t->labels_length * 2 * sizeof(char));
 
-    if (!t->labels) {
+    if (!new_labels) {
         fprintf(stderr, "error: could not allocate storage");
         exit(EXIT_FAILURE);
     }
 
+    if (new_labels != t->labels) {
+        t->labels = new_labels;
+        t->labels_end = t->labels + offset;
+    }
+
     t->labels_length = t->labels_length * 2;
-    t->labels_end = t->labels + offset * sizeof(char);
+    t->labels_end = t->labels + offset;
 }
 
 char *table_label_find(table *t, char *label) {
@@ -87,14 +103,14 @@ char *table_label_push(table *t, char *label) {
 }
 
 void table_symbol_push(table *t, symbol *s) {
-    size_t offset = (t->syms_end - t->syms) / sizeof(symbol);
+    size_t offset = t->syms_end - t->syms;
 
     if (offset >= t->syms_length) {
         table_resize_syms(t, offset);
     }
 
     memcpy(t->syms_end, s, sizeof(symbol));
-    t->syms_end += sizeof(symbol);
+    t->syms_end += 1;
 }
 
 void table_ref_push(table *t, reference *r) {
@@ -105,11 +121,12 @@ void table_ref_push(table *t, reference *r) {
     }
 
     memcpy(t->refs_end, r, sizeof(reference));
-    t->refs_end += sizeof(reference);
+    t->refs_end += 1;
 }
 
 reference *table_ref_pop(table *t) {
-    reference *r = t->refs_end -= sizeof(reference);
+    t->refs_end -= 1;
+    reference *r = t->refs_end;
     return r >= t->refs ? r : NULL;
 }
 
@@ -138,7 +155,7 @@ void table_symbol_define(table *t, char *label, size_t addr) {
 symbol *table_symbol_lookup(table *t, char *label) {
     char *loc = table_label_find(t, label);
 
-    for (symbol *s = t->syms; s < t->syms_end; s += sizeof(symbol)) {
+    for (symbol *s = t->syms; s < t->syms_end; s++) {
         if (s && s->label == loc) {
             return s;
         }
@@ -150,7 +167,7 @@ symbol *table_symbol_lookup(table *t, char *label) {
 void table_symbol_del(table *t, char *label) {
     char *loc = table_label_find(t, label);
 
-    for (symbol *s = t->syms; s < t->syms_end; s += sizeof(symbol)) {
+    for (symbol *s = t->syms; s < t->syms_end; s++) {
         if (s && s->label == loc) {
             s->label = NULL;
             return;
@@ -160,14 +177,14 @@ void table_symbol_del(table *t, char *label) {
 
 void table_print(table *t) {
     printf("SYMBOLS\n-------\n");
-    for (symbol *s = t->syms; s < t->syms_end; s += sizeof(symbol)) {
+    for (symbol *s = t->syms; s < t->syms_end; s++) {
         if (s->label) {
             printf("%s: %zu\n", s->label, s->address);
         }
     }
 
     printf("\nREFERENCES\n----------\n");
-    for (reference *r = t->refs; r < t->refs_end; r += sizeof(reference)) {
+    for (reference *r = t->refs; r < t->refs_end; r++) {
         if (r->label) {
             printf("%s: %p\n", r->label, r->offset);
         }
@@ -186,7 +203,7 @@ void table_snprintf(table *t, char *str, size_t n) {
     str = str + len;
     n = n - len;
 
-    for (symbol *s = t->syms; s < t->syms_end; s += sizeof(symbol)) {
+    for (symbol *s = t->syms; s < t->syms_end; s++) {
         if (s->label) {
             len = snprintf(str, n, "%s: %zu\n", s->label, s->address);
             str = str + len;
@@ -198,7 +215,7 @@ void table_snprintf(table *t, char *str, size_t n) {
     str = str + len;
     n = n - len;
 
-    for (reference *r = t->refs; r < t->refs_end; r += sizeof(reference)) {
+    for (reference *r = t->refs; r < t->refs_end; r++) {
         if (r->label) {
             len = snprintf(str, n, "%s: %p\n", r->label, r->offset);
             str = str + len;

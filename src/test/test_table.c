@@ -16,7 +16,7 @@ static MunitResult test_symbol_lookup(const MunitParameter params[],
 
     // Test defining a symbol with an empty string
     table_symbol_define(t, "", 1);
-    munit_assert_ptr_equal(t->syms_end - sizeof(symbol), t->syms);
+    munit_assert_ptr_equal(t->syms_end - 1, t->syms);
 
     s = table_symbol_lookup(t, "");
     munit_assert_string_equal(s->label, "");
@@ -24,7 +24,7 @@ static MunitResult test_symbol_lookup(const MunitParameter params[],
 
     // Test defining a symbol with a non-empty string
     table_symbol_define(t, "label", 2);
-    munit_assert_ptr_equal(t->syms_end - 2 * sizeof(symbol), t->syms);
+    munit_assert_ptr_equal(t->syms_end - 2, t->syms);
 
     s = table_symbol_lookup(t, "label");
     munit_assert_string_equal(s->label, "label");
@@ -32,14 +32,14 @@ static MunitResult test_symbol_lookup(const MunitParameter params[],
 
     // Test redefining a symbol with a previously defined label
     table_symbol_define(t, "label", 3);
-    munit_assert_ptr_equal(t->syms_end - 3 * sizeof(symbol), t->syms);
+    munit_assert_ptr_equal(t->syms_end - 3, t->syms);
     // TODO: fix symbol redefinition
 
     s = table_symbol_lookup(t, "label");
     munit_assert_string_equal(s->label, "label");
     // munit_assert_ulong(s->address, ==, 3);
 
-    munit_assert_ptr_equal(t->syms + 3 * sizeof(symbol), t->syms_end);
+    munit_assert_ptr_equal(t->syms + 3, t->syms_end);
     return MUNIT_OK;
 }
 
@@ -95,7 +95,7 @@ static MunitResult test_ref_add(const MunitParameter params[], void *fixture) {
 
     char *string = "abcdefghijklmnopqrstuvwxyz";
     table_ref_add(t, "label", (uint8_t *)string);
-    munit_assert_ptr_equal(t->refs + sizeof(reference), t->refs_end);
+    munit_assert_ptr_equal(t->refs + 1, t->refs_end);
 
     r = table_ref_pop(t);
     munit_assert_string_equal(r->label, "label");
@@ -103,23 +103,23 @@ static MunitResult test_ref_add(const MunitParameter params[], void *fixture) {
     munit_assert_ptr_equal(t->refs, t->refs_end);
 
     table_ref_add(t, "a", (uint8_t *)(string + 1));
-    munit_assert_ptr_equal(t->refs + sizeof(reference), t->refs_end);
+    munit_assert_ptr_equal(t->refs + 1, t->refs_end);
 
     table_ref_add(t, "b", (uint8_t *)(string + 2));
-    munit_assert_ptr_equal(t->refs + 2 * sizeof(reference), t->refs_end);
+    munit_assert_ptr_equal(t->refs + 2, t->refs_end);
 
     table_ref_add(t, "c", (uint8_t *)(string + 3));
-    munit_assert_ptr_equal(t->refs + 3 * sizeof(reference), t->refs_end);
+    munit_assert_ptr_equal(t->refs + 3, t->refs_end);
 
     r = table_ref_pop(t);
     munit_assert_string_equal(r->label, "c");
     munit_assert_ptr_equal(r->offset, (uint8_t *)(string + 3));
-    munit_assert_ptr_equal(t->refs + 2 * sizeof(reference), t->refs_end);
+    munit_assert_ptr_equal(t->refs + 2, t->refs_end);
 
     r = table_ref_pop(t);
     munit_assert_string_equal(r->label, "b");
     munit_assert_ptr_equal(r->offset, (uint8_t *)(string + 2));
-    munit_assert_ptr_equal(t->refs + sizeof(reference), t->refs_end);
+    munit_assert_ptr_equal(t->refs + 1, t->refs_end);
 
     r = table_ref_pop(t);
     munit_assert_string_equal(r->label, "a");
@@ -159,37 +159,44 @@ static MunitResult test_table_print(const MunitParameter params[],
 
     table_snprintf(t, buffer, length);
 
-    strncpy(dest, buffer, 16);
-    dest[16] = '\0';
-    munit_assert_string_equal(dest, "SYMBOLS\n-------\n");
+    char *test = strtok(buffer, "\n");
+    munit_assert_string_equal(test, "SYMBOLS");
 
-    strncpy(dest, buffer + 16, 11);
-    dest[11] = '\0';
-    munit_assert_string_equal(dest, "a: 1\nb: 2\n\n");
+    test = strtok(NULL, "\n");
+    munit_assert_string_equal(test, "-------");
 
-    strncpy(dest, buffer + 27, 22);
-    dest[22] = '\0';
-    munit_assert_string_equal(dest, "REFERENCES\n----------\n");
+    test = strtok(NULL, "\n");
+    munit_assert_string_equal(test, "a: 1");
 
-    strncpy(dest, buffer + 49, 15);
-    dest[5] = '\0';
-    munit_assert_string_equal(dest, "q: 0x");
+    test = strtok(NULL, "\n");
+    munit_assert_string_equal(test, "b: 2");
 
-    strncpy(dest, buffer + 64, 15);
-    dest[5] = '\0';
-    munit_assert_string_equal(dest, "r: 0x");
+    test = strtok(NULL, "\n");
+    munit_assert_string_equal(test, "REFERENCES");
 
-    strncpy(dest, buffer + 79, 15);
-    dest[5] = '\0';
-    munit_assert_string_equal(dest, "s: 0x");
+    test = strtok(NULL, "\n");
+    munit_assert_string_equal(test, "----------");
 
-    strncpy(dest, buffer + 95, 14);
-    dest[14] = '\0';
-    munit_assert_string_equal(dest, "LABELS\n------\n");
+    test = strtok(NULL, "\n");
+    test[5] = '\0';
+    munit_assert_string_equal(test, "q: 0x");
 
-    strncpy(dest, buffer + 109, 13);
-    dest[13] = '\0';
-    munit_assert_string_equal(dest, "a, b, q, r, s");
+    test = strtok(NULL, "\n");
+    test[5] = '\0';
+    munit_assert_string_equal(test, "r: 0x");
+
+    test = strtok(NULL, "\n");
+    test[5] = '\0';
+    munit_assert_string_equal(test, "s: 0x");
+
+    test = strtok(NULL, "\n");
+    munit_assert_string_equal(test, "LABELS");
+
+    test = strtok(NULL, "\n");
+    munit_assert_string_equal(test, "------");
+
+    test = strtok(NULL, "\n");
+    munit_assert_string_equal(test, "a, b, q, r, s");
 
     free(data);
     free(buffer);
@@ -212,8 +219,8 @@ static void test_table_tear_down(void *fixture) {
     table_free(t);
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
 static MunitTest assem_table_tests[] = {
     {(char *)"look up symbol", test_symbol_lookup, test_table_setup,
      test_table_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
@@ -226,4 +233,4 @@ static MunitTest assem_table_tests[] = {
     {(char *)"print table", test_table_print, test_table_setup,
      test_table_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
-#pragma clang diagnostic pop
+#pragma GCC diagnostic pop

@@ -1,4 +1,4 @@
-name: test
+name: Unit Tests
 run-name: Build and Run Unit Tests
 
 on:

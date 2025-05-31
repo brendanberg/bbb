@@ -2,7 +2,7 @@ SRC=src
 BUILD=build
 
 COMPILER=gcc
-OPTIONS=-Wall
+OPTIONS=-Wall -g
 # -pedantic -Wall -Wextra -Werror -Wshadow -Wconversion -Wunreachable-code
 COMPILE=$(COMPILER) $(OPTIONS)
 
