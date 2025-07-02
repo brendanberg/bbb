@@ -6,7 +6,7 @@ OPTIONS=-Wall -g
 # -pedantic -Wall -Wextra -Werror -Wshadow -Wconversion -Wunreachable-code
 COMPILE=$(COMPILER) $(OPTIONS)
 
-COMMON_HEADERS = $(SRC)/machine/cpu.h $(SRC)/machine/io.h $(SRC)/machine/memory.h
+COMMON_HEADERS = $(SRC)/machine/cpu.h $(SRC)/machine/io.h $(SRC)/machine/memory.h $(SRC)/machine/sim.h
 ASSEM_HEADERS = $(SRC)/assem/assem.h $(SRC)/assem/table.h
 
 default: build bbb
@@ -26,7 +26,10 @@ $(BUILD)/assem.o: $(SRC)/assem/assem.c $(ASSEM_HEADERS)
 $(BUILD)/io.o: $(SRC)/machine/io.c $(COMMON_HEADERS)
 	$(COMPILE) -c $< -o $@
 
-bbb: $(BUILD)/machine.o $(BUILD)/memory.o $(BUILD)/io.o $(BUILD)/table.o $(BUILD)/assem.o $(SRC)/main.c
+$(BUILD)/sim.o: $(SRC)/machine/sim.c $(COMMON_HEADERS)
+	$(COMPILE) -c $< -o $@
+
+bbb: $(BUILD)/machine.o $(BUILD)/memory.o $(BUILD)/io.o $(BUILD)/sim.o $(BUILD)/table.o $(BUILD)/assem.o $(SRC)/main.c
 	$(COMPILE) $^ -o $@
 
 build:

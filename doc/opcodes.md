@@ -168,11 +168,11 @@ Compare the values in source and destination locations and set the zero and nega
 
 If the values are equal, the zero flag will be set. In all other cases, the zero flag will be unset. If source is greater than or equal to destination, the negative flag will be unset. If source is less than destination, the negative flag will be set.
 
-| Z   | N   | Condition                                      |
-| --- | --- | ---------------------------------------------- |
-| 0   | 0   | Source is greater than or equal to destination |
-| 1   | 0   | Source equals destination                      |
-| 0   | 1   | Source is less than destination                |
+| Z   | N   | Condition                          |
+| --- | --- | ---------------------------------- |
+| 0   | 0   | Source is greater than destination |
+| 1   | 0   | Source equals destination          |
+| 0   | 1   | Source is less than destination    |
 
 - **Operands:**  
   `<src>` – General purpose register, CV, MD, MX  
@@ -180,14 +180,14 @@ If the values are equal, the zero flag will be set. In all other cases, the zero
 - **Flags:**  
   `O` – No change  
   `C` – No change  
-  `Z` – Sets zero flag if the sum is 0  
-  `N` – Sets negative flag if the most significant bit is set
+  `Z` – Sets zero flag if source equals destination  
+  `N` – Sets negative flag if source is less than destination
 
 ### `JMP <cond> <addr>`
 
 Conditionally jump to the memory location indicated by the destination operand.
 
-The jump condition is a 4-bit value that defines which flag to test and the desired flag value. The three least-significant bits indicate which status flag will be used in the condition. The most significant bit is the value to test the flag against.
+The jump condition code is a 4-bit value that defines which flag to test and the desired flag value. The three least-significant bits indicate which status flag will be used in the condition. The most significant bit is the value to test the flag against.
 
 For example, a `JMP` instruction with a condition operand of `1` (binary `0001`) will follow the branch if the zero flag (bit one of the status register pair) is not set. When combined with a `CMP` instruction, this allows us to construct the equivalent of a branch if not equal instruction.
 

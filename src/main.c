@@ -1,6 +1,7 @@
 // #include <unistd.h>
 #include "assem/assem.h"
 #include "machine/cpu.h"
+#include "machine/sim.h"
 #include <memory.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -10,6 +11,13 @@
 #define MAX_ADDRESS (64 * 1024)
 #define USAGE_STRING                                                           \
     "usage: %s assemble SOURCE_FILE IMAGE\n       %s run IMAGE\n"
+
+void bbb_event_update(machine *m) {
+    sim_print(m);
+    sim_io(m);
+}
+
+void bbb_event_setup(machine *m) { sim_setup(m); }
 
 int bbb_assemble(char *source_name, FILE *source, FILE *image) {
     if (fseek(source, 0L, SEEK_END) != 0) {
@@ -53,10 +61,11 @@ int bbb_run(FILE *image) {
     machine *m = machine_init(MAX_ADDRESS);
     memcpy(m->memory->data, prog, img_size);
 
+    m->event_setup = bbb_event_setup;
+    m->event_update = bbb_event_update;
+
     machine_start(m);
-    machine_show(m);
     machine_run(m);
-    machine_show(m);
     machine_free(m);
 
     return 0;

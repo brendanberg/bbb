@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-uint16_t prev_keymap = 0;
-
 #define READ_NEXT(x) (*(x)++)
 #define READ_QUARTET(x)                                                        \
     (*(x) << 12 | *((x) + 1) << 8 | *((x) + 2) << 4 | *((x) + 3));             \
@@ -25,6 +23,7 @@ static inline void machine_instr_decode(machine *m);
 static inline void machine_instr_execute(machine *m);
 
 static inline void machine_interrupt_check(machine *m);
+void machine_call_update(machine *m);
 
 static inline uint16_t machine_get_value(machine *m, Register src,
                                          uint16_t src_ext) {
@@ -97,117 +96,14 @@ machine *machine_init(size_t size) {
     machine *m = malloc(sizeof(machine));
     m->memory = memory_init(size);
     machine_reset(m);
-    kbio_setup();
-    printf("\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n");
-    // fprintf(stderr, "Starting up...\n");
     return m;
 }
 
-#define RENDER(t, c, e) ((t) ? printf((c), (t)) : printf((e), (t)))
-#define E(x) "\e[" #x
-#define E385(x) "\e[38:5:" #x
-#define E0(x) "\e[0;" #x
-
-void machine_show(machine *m) {
-    // Return to home
-    printf(E(11A) E(?25l) "\r\n" E385(13m));
-    printf("╔═════════════╤════════╤══════════════════════════════╗\r\n");
-    printf("║" E385(6m) " A B C D E F " E385(13m));
-    printf("│" E385(6m) " HIOCZN " E385(13m));
-    printf("│" E385(6m) " PROG  STAK  INTR  INDX  TEMP " E385(13m) "║\r\n");
-    printf("║" E385(5m) " ");
-
-    RENDER(m->registers[REGISTER_A], E(1m) E385(5m) "%X " E0(35m),
-           E385(11m) "%X ");
-    RENDER(m->registers[REGISTER_B], E(1m) E385(5m) "%X " E0(35m),
-           E385(11m) "%X ");
-    RENDER(m->registers[REGISTER_C], E(1m) E385(5m) "%X " E0(35m),
-           E385(11m) "%X ");
-    RENDER(m->registers[REGISTER_D], E(1m) E385(5m) "%X " E0(35m),
-           E385(11m) "%X ");
-    RENDER(m->registers[REGISTER_E], E(1m) E385(5m) "%X " E0(35m),
-           E385(11m) "%X ");
-    RENDER(m->registers[REGISTER_F], E(1m) E385(5m) "%X " E0(35m),
-           E385(11m) "%X ");
-
-    printf(E385(13m) "│" E385(4m) " ");
-
-    printf(m->flags & 0x20 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-    printf(m->flags & 0x10 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-    printf(m->flags & 0x08 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-    printf(m->flags & 0x04 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-    printf(m->flags & 0x02 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-    printf(m->flags & 0x01 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-
-    printf(" " E385(13m) "│" E385(5m));
-
-    RENDER((uint16_t)(m->pc - m->memory->data),
-           " " E(1m) E385(5m) "%04X" E0(35m) " ", " " E385(11m) "%04X ");
-    RENDER((uint16_t)(m->sp - m->memory->data),
-           " " E(1m) E385(5m) "%04X" E0(35m) " ", " " E385(11m) "%04X ");
-    RENDER((uint16_t)(m->iv - m->memory->data),
-           " " E(1m) E385(5m) "%04X" E0(35m) " ", " " E385(11m) "%04X ");
-    RENDER((uint16_t)(m->ix - m->memory->data),
-           " " E(1m) E385(5m) "%04X" E0(35m) " ", " " E385(11m) "%04X ");
-    RENDER((uint16_t)(m->ta - m->memory->data),
-           " " E(1m) E385(5m) "%04X" E0(35m) " ", " " E385(11m) "%04X ");
-
-    printf(E385(13m) "║\r\n");
-    printf("╠═════════╤═══╧════════╧══════════════════════════════╣\r\n");
-
-    printf("║ ");
-    printf("%-1X ", m->memory->data[0xF000]);
-    printf("%-1X ", m->memory->data[0xF001]);
-    printf("%-1X ", m->memory->data[0xF002]);
-    printf("%-1X ", m->memory->data[0xF003]);
-    printf("│                                           ║\r\n");
-    printf("║ ");
-    printf("%-1X ", m->memory->data[0xF004]);
-    printf("%-1X ", m->memory->data[0xF005]);
-    printf("%-1X ", m->memory->data[0xF006]);
-    printf("%-1X ", m->memory->data[0xF007]);
-    printf("│                                           ║\r\n");
-    printf("║ ");
-    printf("%-1X ", m->memory->data[0xF008]);
-    printf("%-1X ", m->memory->data[0xF009]);
-    printf("%-1X ", m->memory->data[0xF00A]);
-    printf("%-1X ", m->memory->data[0xF00B]);
-    printf("│                                           ║\r\n");
-    printf("║ ");
-    printf("%-1X ", m->memory->data[0xF00C]);
-    printf("%-1X ", m->memory->data[0xF00D]);
-    printf("%-1X ", m->memory->data[0xF00E]);
-    printf("%-1X ", m->memory->data[0xF00F]);
-    printf("│                                           ║\r\n");
-
-    printf("╚═════════╧═══════════════════════════════════════════╝\r\n");
-    printf(E(0m) "\r\n" E(?25h));
-}
-
-static inline void machine_io(machine *m) {
-    // Get the currently pressed keys. If they changed since last time and the
-    // interrupt flag is not asserted, set the keyboard value in the
-    // memory-mapped IO segment and assert the interrupt flag.
-    char meta = 0;
-    uint16_t keymap = kbio_get_keymap(&meta);
-
-    if (meta == 'q') {
-        m->flags |= 0x20; // Set halt flag
-        return;
-    }
-
-    if (keymap != prev_keymap && (m->flags & 0x10) == 0) {
-        m->memory->data[0xFFF0] = keymap & 0x000F;
-        m->memory->data[0xFFF1] = (keymap & 0x00F0) >> 4;
-        m->memory->data[0xFFF2] = (keymap & 0x0F00) >> 8;
-        m->memory->data[0xFFF3] = (keymap & 0xF000) >> 12;
-
-        prev_keymap = keymap;
-        m->flags |= 0x10; // Set interrupt flag
-    }
-}
-
 void machine_start(machine *m) {
+    if (m->event_setup != NULL) {
+        m->event_setup(m);
+    }
+
     uint16_t pc = READ_QUARTET(m->pc);
     m->sp += READ_QUARTET(m->pc);
     m->iv += READ_QUARTET(m->pc);
@@ -225,19 +121,26 @@ void machine_reset(machine *m) {
     m->pc = m->sp = m->iv = m->ix = m->ta = m->memory->data;
     m->flags = 0x80;
 
-    for (uint8_t i = 0; i < 8; i++) {
+    for (uint8_t i = 0; i < CPU_REGISTER_COUNT; i++) {
         m->registers[i] = 0;
     }
 }
 
 void machine_run(machine *m) {
+    machine_call_update(m);
     while (!(m->flags & 0x20)) {
         machine_instr_fetch(m);
         machine_instr_decode(m);
         machine_instr_execute(m);
-        machine_show(m);
-        machine_io(m);
+        machine_call_update(m);
         machine_interrupt_check(m);
+    }
+    machine_call_update(m);
+}
+
+void machine_call_update(machine *m) {
+    if (m->event_update != NULL) {
+        m->event_update(m);
     }
 }
 

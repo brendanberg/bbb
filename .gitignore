@@ -1,12 +1,13 @@
 .DS_Store
 .vscode
 *.out
+*.dSYM
 
 build/
 
 # The bbb and test executables get created in the root directory
 bbb
-test
+/test
 
 # Ignore image files created by bbb
 *.img
