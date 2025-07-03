@@ -8,7 +8,7 @@
 
 #define OPCODE_COUNT 16
 #define REGISTER_COUNT 13
-#define DIRECTIVE_COUNT 2
+#define DIRECTIVE_COUNT 3
 
 typedef enum ParseState
 {
@@ -28,6 +28,7 @@ typedef enum
 {
     META_ORG,
     META_DATA,
+    META_INCLUDE,
     META_ERROR
 } MetaDirective;
 
@@ -61,7 +62,7 @@ char *registers[REGISTER_COUNT] = {"a", "b", "c", "d", "e", "f", "s0",
 // The CV, MD, and MX virtual registers are missing from this table
 // because they cannot be used in register specifiers.
 
-char *directives[DIRECTIVE_COUNT] = {"org", "data"};
+char *directives[DIRECTIVE_COUNT] = {"org", "data", "inc"};
 
 #define PUSH_NEXT(m, v) (*(m)++ = (v))
 
@@ -377,6 +378,7 @@ static inline ParseState parse_directive(context *ctx, char *token)
         return PARSE_ORG_ADDR;
     case META_DATA:
         return PARSE_DATA;
+    // TODO: add case META_INC:
     case META_ERROR:
     default:
         fprintf(stderr, "error: unrecognized assembler directive '%s'\n", token);

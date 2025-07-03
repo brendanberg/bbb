@@ -90,8 +90,6 @@ typedef struct machine {
 
 machine *machine_init(size_t size);
 
-// void machine_register_step_cb(machine *m, MachineStep func);
-
 void machine_start(machine *mach);
 void machine_pause(machine *mach);
 void machine_halt(machine *mach);
