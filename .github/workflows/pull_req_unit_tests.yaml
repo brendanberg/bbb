@@ -1,0 +1,22 @@
+name: Unit Tests
+run-name: Build and Run Unit Tests
+
+on:
+  push:
+    branches:
+      - "**"
+      - "!main"
+
+jobs:
+  build-test:
+    name: "Build and Run Unit Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out latest commit
+        uses: actions/checkout@v4
+      - name: Build Tests
+        uses: "./.github/actions/build"
+        with:
+          target: test
+      - name: Run Tests
+        uses: "./.github/actions/test"
