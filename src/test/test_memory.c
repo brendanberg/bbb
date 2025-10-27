@@ -63,9 +63,10 @@ test_memory_out_of_bounds_read_write(const MunitParameter params[],
     memory *m = (memory *)fixture;
 
     for (int i = 0; i < 1024; i++) {
-        size_t addr = munit_rand_int_range(0, MAX_ADDRESS);
+        size_t addr = munit_rand_int_range(1, MAX_ADDRESS);
         uint8_t write = munit_rand_int_range(0, 255);
 
+        munit_assert_ulong(m->size, <, MAX_ADDRESS + addr);
         memory_write(m, MAX_ADDRESS + addr, write);
 
         uint8_t read = memory_read(m, MAX_ADDRESS + addr);
