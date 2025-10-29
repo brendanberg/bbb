@@ -5,7 +5,29 @@
 #include "../machine/cpu.h"
 #include "../munit/munit.h"
 
+static int test_cpu_call_setup_count = 0;
+
+static void test_cpu_call_setup_handler(machine *m) {
+    test_cpu_call_setup_count += 1;
+}
+
+static int test_cpu_call_update_count = 0;
+
+static void test_cpu_call_update_handler(machine *m) {
+    test_cpu_call_update_count += 1;
+}
+
+static int test_cpu_call_teardown_count = 0;
+
+static void test_cpu_call_teardown_handler(machine *m) {
+    test_cpu_call_teardown_count += 1;
+}
+
 static void *test_cpu_setup(const MunitParameter params[], void *fixture) {
+    test_cpu_call_setup_count = 0;
+    test_cpu_call_update_count = 0;
+    test_cpu_call_teardown_count = 0;
+
     machine *m = machine_init(CPU_MAX_ADDRESS);
     return (void *)m;
 }
@@ -128,6 +150,62 @@ static MunitResult test_cpu_reset(const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult test_cpu_call_setup(const MunitParameter params[],
+                                       void *fixture) {
+    machine *m = (machine *)fixture;
+    m->event_setup = test_cpu_call_setup_handler;
+
+    munit_assert_int(test_cpu_call_setup_count, ==, 0);
+    machine_start(m);
+    munit_assert_int(test_cpu_call_setup_count, ==, 1);
+
+    return MUNIT_OK;
+}
+
+static MunitResult test_cpu_call_update(const MunitParameter params[],
+                                        void *fixture) {
+    machine *m = (machine *)fixture;
+    m->event_update = test_cpu_call_update_handler;
+
+    uint8_t program[24] = {0, 0, 1, 4, 0,  0,           0,           0,
+                           0, 0, 0, 0, 0,  0,           0,           0,
+                           0, 0, 0, 0, OR, REGISTER_CV, REGISTER_S1, 2};
+    memcpy(m->memory->data, program, 24);
+
+    munit_assert_int(test_cpu_call_update_count, ==, 0);
+    machine_start(m);
+    machine_run(m);
+    munit_assert_int(test_cpu_call_update_count, ==, 3);
+
+    return MUNIT_OK;
+}
+
+static MunitResult test_cpu_call_teardown(const MunitParameter params[],
+                                          void *fixture) {
+    machine *m = (machine *)fixture;
+    m->event_teardown = test_cpu_call_teardown_handler;
+
+    uint8_t program[24] = {0, 0, 1, 4, 0,  0,           0,           0,
+                           0, 0, 0, 0, 0,  0,           0,           0,
+                           0, 0, 0, 0, OR, REGISTER_CV, REGISTER_S1, 2};
+    memcpy(m->memory->data, program, 24);
+
+    munit_assert_int(test_cpu_call_teardown_count, ==, 0);
+    machine_start(m);
+    machine_run(m);
+    munit_assert_int(test_cpu_call_teardown_count, ==, 0);
+    machine_free(m);
+    munit_assert_int(test_cpu_call_teardown_count, ==, 1);
+
+    return MUNIT_OK;
+}
+
+// static MunitResult test_cpu_interrupt(const MunitParameter params[], void
+// *fixture) {
+//     machine *m = (machine *)fixture;
+
+// }
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 static MunitTest machine_cpu_tests[] = {
@@ -139,5 +217,14 @@ static MunitTest machine_cpu_tests[] = {
      test_cpu_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)"reset clears registers", test_cpu_reset, test_cpu_setup,
      test_cpu_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"calling machine_setup calls event_setup callback",
+     test_cpu_call_setup, test_cpu_setup, test_cpu_tear_down,
+     MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"calling machine_run calls event_update callback",
+     test_cpu_call_update, test_cpu_setup, test_cpu_tear_down,
+     MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"calling machine_free calls event_teardown callback",
+     test_cpu_call_teardown, test_cpu_setup, NULL, MUNIT_TEST_OPTION_NONE,
+     NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
 #pragma GCC diagnostic pop

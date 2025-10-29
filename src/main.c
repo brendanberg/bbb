@@ -9,8 +9,10 @@
 #include <stdlib.h>
 
 #define MAX_ADDRESS (64 * 1024)
+#define BUFFER_SIZE 1024
 #define USAGE_STRING                                                           \
-    "usage: %s assemble SOURCE_FILE IMAGE\n       %s run IMAGE\n"
+    "usage: %s assemble SOURCE_FILE IMAGE\n       %s inspect IMAGE\n       "   \
+    "%s run IMAGE\n"
 
 void bbb_event_update(machine *m) {
     sim_print(m);
@@ -36,6 +38,37 @@ int bbb_assemble(char *source_name, FILE *source, FILE *image) {
     fwrite(mem->data, mem->size, 1, image);
     fflush(image);
     free(prog);
+
+    return EXIT_SUCCESS;
+}
+
+int bbb_inspect(char *image_name) {
+    FILE *pipe;
+    char buffer[BUFFER_SIZE];
+    char command[BUFFER_SIZE];
+
+    int len = snprintf(
+        command, BUFFER_SIZE,
+        "hexdump -C %s | sed 's/ 0/ /g' | sed 'y/abcdef/ABCDEF/'", image_name);
+
+    // Check if the command was truncated.
+    if (len >= sizeof(command)) {
+        perror("error: command length exceeds buffer size.");
+        return EXIT_FAILURE;
+    }
+
+    pipe = popen(command, "r");
+
+    if (pipe == NULL) {
+        perror("error: unable to execute shell command");
+        return EXIT_FAILURE;
+    }
+
+    while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
+        printf("%s", buffer);
+    }
+
+    pclose(pipe);
 
     return EXIT_SUCCESS;
 }
@@ -74,19 +107,20 @@ int bbb_run(FILE *image) {
 int main(int argc, char *argsv[]) {
     int status = EXIT_FAILURE;
 
-    if (argc <= 2 || argc >= 5) {
-        fprintf(stderr, USAGE_STRING, argsv[0], argsv[0]);
+    if (argc <= 2 || argc >= 6) {
+        fprintf(stderr, USAGE_STRING, argsv[0], argsv[0], argsv[0]);
         return EXIT_FAILURE;
     }
 
     if (strcmp(argsv[1], "assemble") == 0) {
-        if (argc != 4) {
+        if (argc < 4 || argc > 5) {
             fprintf(stderr, "usage: %s assemble SOURCE IMAGE\n", argsv[0]);
             return EXIT_FAILURE;
         }
 
         char *src_path = argsv[2];
         char *image_path = argsv[3];
+
         // TODO: validation, etc
         FILE *source = fopen(src_path, "r");
         FILE *image = fopen(image_path, "wb");
@@ -105,6 +139,23 @@ int main(int argc, char *argsv[]) {
 
         fclose(source);
         fclose(image);
+
+        if (status == EXIT_SUCCESS && argc == 5) {
+            if (strcmp(argsv[4], "--inspect") == 0 ||
+                strcmp(argsv[4], "-i") == 0) {
+                status = bbb_inspect(image_path);
+            }
+        }
+
+        return status;
+    } else if (strcmp(argsv[1], "inspect") == 0) {
+        if (argc != 3) {
+            fprintf(stderr, "usage: %s inspect IMAGE\n", argsv[0]);
+            return EXIT_FAILURE;
+        }
+
+        char *image_path = argsv[2];
+        status = bbb_inspect(image_path);
 
         return status;
     } else if (strcmp(argsv[1], "run") == 0) {
@@ -128,6 +179,6 @@ int main(int argc, char *argsv[]) {
         return status;
     }
 
-    fprintf(stderr, USAGE_STRING, argsv[0], argsv[0]);
+    fprintf(stderr, USAGE_STRING, argsv[0], argsv[0], argsv[0]);
     return EXIT_FAILURE;
 }

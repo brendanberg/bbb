@@ -23,7 +23,7 @@ static MunitResult test_memory_read_write(const MunitParameter params[],
     memory *m = (memory *)fixture;
 
     for (int i = 0; i < 1024; i++) {
-        size_t addr = munit_rand_int_range(0, MAX_ADDRESS);
+        size_t addr = munit_rand_int_range(0, MAX_ADDRESS - 1);
         uint8_t write = munit_rand_int_range(0, 255);
 
         memory_write(m, addr, write);
@@ -38,13 +38,13 @@ static MunitResult test_memory_read_write(const MunitParameter params[],
 static MunitResult test_memory_read_write_indexed(const MunitParameter params[],
                                                   void *fixture) {
     memory *m = (memory *)fixture;
+    uint8_t *index = m->data;
 
     for (int i = 0; i < 1024; i++) {
-        uint8_t *index = m->data;
-        size_t s = munit_rand_int_range(0, MAX_ADDRESS);
+        size_t s = munit_rand_int_range(0, MAX_ADDRESS - 1);
 
         for (int j = 0; j < 1024; j++) {
-            size_t offset = munit_rand_int_range(0, MAX_ADDRESS - s);
+            size_t offset = munit_rand_int_range(0, MAX_ADDRESS - 1 - s);
             uint8_t write = munit_rand_int_range(0, 255);
 
             memory_write_indexed(m, index + s, offset, write);
@@ -63,12 +63,13 @@ test_memory_out_of_bounds_read_write(const MunitParameter params[],
     memory *m = (memory *)fixture;
 
     for (int i = 0; i < 1024; i++) {
-        size_t addr = munit_rand_int_range(0, MAX_ADDRESS);
+        size_t addr = munit_rand_int_range(MAX_ADDRESS, MAX_ADDRESS * 2);
         uint8_t write = munit_rand_int_range(0, 255);
 
-        memory_write(m, MAX_ADDRESS + addr, write);
+        munit_assert_ulong(m->size, <=, addr);
+        memory_write(m, addr, write);
 
-        uint8_t read = memory_read(m, MAX_ADDRESS + addr);
+        uint8_t read = memory_read(m, addr);
         munit_assert_uint8(0, ==, read);
     }
 
