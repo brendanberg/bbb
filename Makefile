@@ -35,7 +35,7 @@ bbb: $(BUILD)/machine.o $(BUILD)/memory.o $(BUILD)/io.o $(BUILD)/sim.o $(BUILD)/
 build:
 	mkdir -p $(BUILD)
 
-test: $(BUILD)/munit.o $(BUILD)/machine.o $(BUILD)/memory.o $(BUILD)/io.o $(BUILD)/table.o $(BUILD)/assem.o $(SRC)/test/* $(SRC)/test.c
+test: $(BUILD)/munit.o $(BUILD)/machine.o $(BUILD)/memory.o $(BUILD)/io.o $(BUILD)/table.o $(BUILD)/assem.o $(SRC)/test/*.c $(SRC)/test.c
 	$(COMPILE) $^ -o $@
 
 $(BUILD)/munit.o: $(SRC)/munit/munit.c $(SRC)/munit/munit.h

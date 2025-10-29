@@ -1,11 +1,17 @@
 #define MUNIT_ENABLE_ASSERT_ALIASES
 #include "munit/munit.h"
+#include "test/test_assem.c"
+#include "test/test_build.c"
 #include "test/test_cpu.c"
 #include "test/test_memory.c"
 #include "test/test_table.c"
 
 MunitSuite suites[] = { // Comment here to force formatting
     {(char *)"assem/table: ", assem_table_tests, NULL, 1,
+     MUNIT_SUITE_OPTION_NONE},
+    {(char *)"assem/assem: ", assem_assem_tests, NULL, 1,
+     MUNIT_SUITE_OPTION_NONE},
+    {(char *)"assem/build: ", assem_build_tests, NULL, 1,
      MUNIT_SUITE_OPTION_NONE},
     {(char *)"machine/memory: ", machine_memory_tests, NULL, 1,
      MUNIT_SUITE_OPTION_NONE},

@@ -24,6 +24,7 @@ static inline void machine_instr_execute(machine *m);
 
 static inline void machine_interrupt_check(machine *m);
 void machine_call_update(machine *m);
+void machine_call_teardown(machine *m);
 
 static inline uint16_t machine_get_value(machine *m, Register src,
                                          uint16_t src_ext) {
@@ -141,6 +142,12 @@ void machine_run(machine *m) {
 void machine_call_update(machine *m) {
     if (m->event_update != NULL) {
         m->event_update(m);
+    }
+}
+
+void machine_call_teardown(machine *m) {
+    if (m->event_teardown != NULL) {
+        m->event_teardown(m);
     }
 }
 
@@ -458,6 +465,7 @@ static inline void machine_instr_execute(machine *m) {
 }
 
 void machine_free(machine *m) {
+    machine_call_teardown(m);
     memory_free(m->memory);
     free(m);
 }
