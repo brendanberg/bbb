@@ -57,7 +57,7 @@ typedef struct machine {
     // - The status registers S0 and S2 are stored as the high and low
     // nibbles of the flags byte.
     MachineState status;
-    uint8_t registers[CPU_REGISTER_COUNT]; // TODO: Find out why there are 8
+    uint8_t registers[CPU_REGISTER_COUNT];
     uint8_t flags;
 
     // The pc, sp, iv, ix, and ta registers are all pointers into memory.

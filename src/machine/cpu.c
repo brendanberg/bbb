@@ -18,11 +18,11 @@
     ((x) = ((x) & 0xFC) | ((val) ? 0 : 1) << 1 | ((val) < 0 ? 1 : 0))
 
 // General purpose registers are 4-bit. Special registers are 16-bit
-static inline void machine_instr_fetch(machine *m);
-static inline void machine_instr_decode(machine *m);
-static inline void machine_instr_execute(machine *m);
+extern inline void machine_instr_fetch(machine *m);
+extern inline void machine_instr_decode(machine *m);
+extern inline void machine_instr_execute(machine *m);
 
-static inline void machine_interrupt_check(machine *m);
+extern inline void machine_interrupt_check(machine *m);
 void machine_call_update(machine *m);
 void machine_call_teardown(machine *m);
 
@@ -82,13 +82,13 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
         m->ta = (m->memory->data + value);
         break;
     case REGISTER_S0:
-        m->flags = value & 0x0F;
+        m->flags = (m->flags & 0xF0) | (value & 0x0F);
         break;
     case REGISTER_S1:
-        m->flags = (value & 0x03) << 4;
+        m->flags = (m->flags & 0x0F) | 0x80 | ((value & 0x03) << 4);
         break;
     default:
-        m->registers[dst] = value;
+        m->registers[dst] = value & 0xF;
         break;
     }
 }
@@ -151,7 +151,7 @@ void machine_call_teardown(machine *m) {
     }
 }
 
-static inline void machine_interrupt_check(machine *m) {
+inline void machine_interrupt_check(machine *m) {
     if (!(m->flags & 0x10) || m->int_mask) {
         return;
     } else {
@@ -167,11 +167,11 @@ static inline void machine_interrupt_check(machine *m) {
     }
 }
 
-static inline void machine_instr_fetch(machine *m) {
+extern inline void machine_instr_fetch(machine *m) {
     m->instr = READ_NEXT(m->pc);
 }
 
-static inline void machine_instr_decode(machine *m) {
+extern inline void machine_instr_decode(machine *m) {
     switch (m->instr) {
     case NOP: {
         break;
@@ -277,7 +277,7 @@ static inline void machine_instr_decode(machine *m) {
     }
 }
 
-static inline void machine_instr_execute(machine *m) {
+extern inline void machine_instr_execute(machine *m) {
     switch (m->instr) {
     case NOP: {
         break;
@@ -379,6 +379,7 @@ static inline void machine_instr_execute(machine *m) {
              (m->dst < REGISTER_PC || m->dst > REGISTER_CV))) {
             // If the src and dst widths don't match, we can't compare
             SET_HALT(m->flags);
+            break;
         }
 
         uint16_t lhs = machine_get_value(m, m->src, m->src_ext);

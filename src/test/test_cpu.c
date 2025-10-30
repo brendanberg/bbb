@@ -110,7 +110,7 @@ static MunitResult test_cpu_program_halt(const MunitParameter params[],
     machine_start(m);
     machine_run(m);
 
-    munit_assert_uint8(m->flags, ==, 0x20);
+    munit_assert_uint8(m->flags, ==, 0xA0);
     munit_assert_ptr_equal(m->pc, m->memory->data + 24);
     return MUNIT_OK;
 }
