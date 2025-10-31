@@ -492,10 +492,10 @@ extern inline void machine_instr_execute(machine *m) {
         if ((m->flags & (1 << (m->dst & 7))) ==
             (((m->dst & 8) >> 3) << (m->dst & 7))) {
             uint16_t pc = m->pc - m->memory->data;
-            *(m->sp)++ = pc & 0xF;
-            *(m->sp)++ = (pc >> 4) & 0xF;
-            *(m->sp)++ = (pc >> 8) & 0xF;
             *(m->sp)++ = (pc >> 12) & 0xF;
+            *(m->sp)++ = (pc >> 8) & 0xF;
+            *(m->sp)++ = (pc >> 4) & 0xF;
+            *(m->sp)++ = (pc >> 0) & 0xF;
             m->pc = m->memory->data + m->dst_ext;
         }
         break;

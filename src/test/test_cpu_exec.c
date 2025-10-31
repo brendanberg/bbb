@@ -2004,26 +2004,837 @@ static MunitResult test_cpu_exec_pop(const MunitParameter params[],
 static MunitResult test_cpu_exec_jmp(const MunitParameter params[],
                                      void *fixture) {
     machine *m = (machine *)fixture;
-    uint8_t program[] = {NOP};
-    memcpy(m->memory->data, program, 1);
+
+    uint8_t jmp_n[] = {JMP, 0x8, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_n, 6);
+    m->flags |= FLAG_NEGATIVE;
 
     machine_step(m);
 
-    munit_assert_uint8(m->flags, ==, 0x80);
-    munit_assert_ptr_equal(m->pc, m->memory->data + 1);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_NEGATIVE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    m->flags &= ~FLAG_NEGATIVE;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_nn[] = {JMP, 0x0, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_nn, 6);
+    m->flags &= ~FLAG_NEGATIVE;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    m->flags |= FLAG_NEGATIVE;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_NEGATIVE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_z[] = {JMP, 0x9, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_z, 6);
+    m->flags |= FLAG_ZERO;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    m->flags &= ~FLAG_ZERO;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_nz[] = {JMP, 0x1, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_nz, 6);
+    m->flags &= ~FLAG_ZERO;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    m->flags |= FLAG_ZERO;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_c[] = {JMP, 0xA, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_c, 6);
+    m->flags |= FLAG_CARRY;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    m->flags &= ~FLAG_CARRY;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_nc[] = {JMP, 0x2, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_nc, 6);
+    m->flags &= ~FLAG_CARRY;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    m->flags |= FLAG_CARRY;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_o[] = {JMP, 0xB, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_o, 6);
+    m->flags |= FLAG_OVERFLOW;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_OVERFLOW));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    m->flags &= ~FLAG_OVERFLOW;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_no[] = {JMP, 0x3, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_no, 6);
+    m->flags &= ~FLAG_OVERFLOW;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    m->flags |= FLAG_OVERFLOW;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_OVERFLOW));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_i[] = {JMP, 0xC, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_i, 6);
+    // m->flags |= FLAG_INTERRUPT;
+
+    // machine_step(m);
+
+    // munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_INTERRUPT));
+    // munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    // machine_reset(m);
+
+    m->flags &= ~FLAG_INTERRUPT;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_ni[] = {JMP, 0x4, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_ni, 6);
+    m->flags &= ~FLAG_INTERRUPT;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    // m->flags |= FLAG_INTERRUPT;
+
+    // machine_step(m);
+
+    // munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_INTERRUPT));
+    // munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    // machine_reset(m);
+
+    uint8_t jmp_h[] = {JMP, 0xD, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_h, 6);
+    // m->flags |= FLAG_HALT;
+
+    // machine_step(m);
+
+    // munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_HALT));
+    // munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    // machine_reset(m);
+
+    m->flags &= ~FLAG_HALT;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_nh[] = {JMP, 0x5, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_nh, 6);
+    m->flags &= ~FLAG_HALT;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    m->flags |= FLAG_HALT;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_HALT));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_f[] = {JMP, 0xE, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_f, 6);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t jmp_nf[] = {JMP, 0x6, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_nf, 6);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    uint8_t jmp_t[] = {JMP, 0xF, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_t, 6);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+
+    machine_reset(m);
+
+    uint8_t jmp_nt[] = {JMP, 0x7, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jmp_nt, 6);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
     return MUNIT_OK;
 }
 
 static MunitResult test_cpu_exec_jsr(const MunitParameter params[],
                                      void *fixture) {
     machine *m = (machine *)fixture;
-    uint8_t program[] = {NOP};
-    memcpy(m->memory->data, program, 1);
+
+    uint8_t jsr_n[] = {JSR, 0x8, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_n, 6);
+    m->flags |= FLAG_NEGATIVE;
+    m->sp += 0xA000;
 
     machine_step(m);
 
-    munit_assert_uint8(m->flags, ==, 0x80);
-    munit_assert_ptr_equal(m->pc, m->memory->data + 1);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_NEGATIVE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags &= ~FLAG_NEGATIVE;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_nn[] = {JSR, 0x0, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_nn, 6);
+    m->flags &= ~FLAG_NEGATIVE;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags |= FLAG_NEGATIVE;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_NEGATIVE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_z[] = {JSR, 0x9, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_z, 6);
+    m->flags |= FLAG_ZERO;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags &= ~FLAG_ZERO;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_nz[] = {JSR, 0x1, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_nz, 6);
+    m->flags &= ~FLAG_ZERO;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags |= FLAG_ZERO;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_c[] = {JSR, 0xA, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_c, 6);
+    m->flags |= FLAG_CARRY;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags &= ~FLAG_CARRY;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_nc[] = {JSR, 0x2, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_nc, 6);
+    m->flags &= ~FLAG_CARRY;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags |= FLAG_CARRY;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_o[] = {JSR, 0xB, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_o, 6);
+    m->flags |= FLAG_OVERFLOW;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_OVERFLOW));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags &= ~FLAG_OVERFLOW;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_no[] = {JSR, 0x3, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_no, 6);
+    m->flags &= ~FLAG_OVERFLOW;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags |= FLAG_OVERFLOW;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_OVERFLOW));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_i[] = {JSR, 0xC, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_i, 6);
+    // m->flags |= FLAG_INTERRUPT;
+    // m->sp += 0xA000;
+
+    // machine_step(m);
+
+    // munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_INTERRUPT));
+    // munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    // munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    // munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    // munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    // munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    // munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    // machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags &= ~FLAG_INTERRUPT;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_ni[] = {JSR, 0x4, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_ni, 6);
+    m->flags &= ~FLAG_INTERRUPT;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    // m->memory->data[0xA003] = 0x0;
+    // m->flags |= FLAG_INTERRUPT;
+
+    // machine_step(m);
+
+    // munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_INTERRUPT));
+    // munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    // munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    // munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    // munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    // munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    // munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    // machine_reset(m);
+
+    uint8_t jsr_h[] = {JSR, 0xD, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_h, 6);
+    // m->flags |= FLAG_HALT;
+    // m->sp += 0xA000;
+
+    // machine_step(m);
+
+    // munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_HALT));
+    // munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    // munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    // munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    // munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    // munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    // munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    // machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags &= ~FLAG_HALT;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_nh[] = {JSR, 0x5, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_nh, 6);
+    m->flags &= ~FLAG_HALT;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->flags |= FLAG_HALT;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_HALT));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_f[] = {JSR, 0xE, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_f, 6);
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    uint8_t jsr_nf[] = {JSR, 0x6, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_nf, 6);
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    uint8_t jsr_t[] = {JSR, 0xF, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_t, 6);
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x6);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA004);
+
+    machine_reset(m);
+
+    m->memory->data[0xA003] = 0x0;
+    uint8_t jsr_nt[] = {JSR, 0x7, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, jsr_nt, 6);
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
+    machine_reset(m);
+
+    m->sp += 0xA000;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_uint8(m->memory->data[0xA000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xA003], ==, 0x0);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xA000);
+
     return MUNIT_OK;
 }
 
@@ -2262,8 +3073,10 @@ static MunitTest machine_cpu_exec_tests[] = {
      test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)"POP executes correctly", test_cpu_exec_pop, test_cpu_exec_setup,
      test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
-    // JMP
-    // JSR
+    {(char *)"JMP executes correctly", test_cpu_exec_jmp, test_cpu_exec_setup,
+     test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"JSR executes correctly", test_cpu_exec_jsr, test_cpu_exec_setup,
+     test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)"MOV executes correctly", test_cpu_exec_mov, test_cpu_exec_setup,
      test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL}};
