@@ -19,7 +19,7 @@ typedef enum {
     REGISTER_E,  // General purpose register E
     REGISTER_F,  // General purpose register F
     REGISTER_S0, // Status register 0 (O, C, Z, N)
-    REGISTER_S1, // Status register 1 (1, 0, H, I)
+    REGISTER_S1, // Status register 1 (T, F, H, I)
     REGISTER_PC, // Program counter
     REGISTER_SP, // Stack pointer
     REGISTER_IV, // Interrupt vector
@@ -49,6 +49,20 @@ typedef enum {
     MOV  // Move the contents of <src> to <dst>
 } Opcode;
 
+typedef enum {
+    FLAG_NEGATIVE = 1 << 0,
+    FLAG_ZERO = 1 << 1,
+    FLAG_CARRY = 1 << 2,
+    FLAG_OVERFLOW = 1 << 3,
+    FLAG_INTERRUPT = 1 << 4,
+    FLAG_HALT = 1 << 5,
+    FLAG_FALSE = 1 << 6,
+    FLAG_TRUE = 1 << 7,
+} Flag;
+
+#define MASK_REGISTER_S0 0x0F
+#define MASK_REGISTER_S1 0xF0
+
 typedef struct machine {
     // - The machine status indicates whether it is running or halted.
     // - The general purpose registers are maintained in an array that is
@@ -57,7 +71,7 @@ typedef struct machine {
     // - The status registers S0 and S2 are stored as the high and low
     // nibbles of the flags byte.
     MachineState status;
-    uint8_t registers[CPU_REGISTER_COUNT]; // TODO: Find out why there are 8
+    uint8_t registers[CPU_REGISTER_COUNT];
     uint8_t flags;
 
     // The pc, sp, iv, ix, and ta registers are all pointers into memory.
