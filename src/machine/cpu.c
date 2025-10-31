@@ -11,7 +11,7 @@
     (*(x) << 12 | *((x) + 1) << 8 | *((x) + 2) << 4 | *((x) + 3));             \
     (x) += 4
 
-#define SET_HALT(x) ((x) |= 0x20)
+#define SET_HALT(x) ((x) |= FLAG_HALT)
 #define SET_CMP(x, lhs, rhs)                                                   \
     ((x) = ((x) & 0xFC) | (((lhs) == (rhs)) << 1) | ((lhs) > (rhs)))
 #define SET_ZN(x, val)                                                         \
@@ -46,7 +46,8 @@ static inline uint16_t machine_get_value(machine *m, Register src,
     case REGISTER_TA:
         return m->ta - m->memory->data;
     case REGISTER_S0:
-        return m->flags & 0x0F;
+        return m->flags &
+               (FLAG_OVERFLOW | FLAG_CARRY | FLAG_ZERO | FLAG_NEGATIVE);
     case REGISTER_S1:
         return m->flags >> 4;
     default:
@@ -58,10 +59,10 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
                                      uint16_t value) {
     switch (dst) {
     case REGISTER_CV:
-        m->flags |= 0x20;
+        m->flags |= FLAG_HALT;
         break;
     case REGISTER_MD:
-        memory_write(m->memory, dst_ext, value);
+        memory_write(m->memory, dst_ext, value & 0xF);
         break;
     case REGISTER_MX:
         memory_write_indexed(m->memory, m->ix, dst_ext, value & 0xF);
@@ -82,10 +83,11 @@ static inline void machine_set_value(machine *m, Register dst, uint16_t dst_ext,
         m->ta = (m->memory->data + value);
         break;
     case REGISTER_S0:
-        m->flags = (m->flags & 0xF0) | (value & 0x0F);
+        m->flags = (m->flags & MASK_REGISTER_S1) | (value & MASK_REGISTER_S0);
         break;
     case REGISTER_S1:
-        m->flags = (m->flags & 0x0F) | 0x80 | ((value & 0x03) << 4);
+        m->flags = (m->flags & MASK_REGISTER_S0) | FLAG_TRUE |
+                   ((value << 4) & (FLAG_HALT | FLAG_INTERRUPT));
         break;
     default:
         m->registers[dst] = value & 0xF;
@@ -120,7 +122,7 @@ void machine_halt(machine *m);
 void machine_reset(machine *m) {
     m->status = STATE_HALT;
     m->pc = m->sp = m->iv = m->ix = m->ta = m->memory->data;
-    m->flags = 0x80;
+    m->flags = FLAG_TRUE;
 
     for (uint8_t i = 0; i < CPU_REGISTER_COUNT; i++) {
         m->registers[i] = 0;
@@ -129,7 +131,7 @@ void machine_reset(machine *m) {
 
 void machine_run(machine *m) {
     machine_call_update(m);
-    while (!(m->flags & 0x20)) {
+    while (!(m->flags & FLAG_HALT)) {
         machine_instr_fetch(m);
         machine_instr_decode(m);
         machine_instr_execute(m);
@@ -152,7 +154,7 @@ void machine_call_teardown(machine *m) {
 }
 
 inline void machine_interrupt_check(machine *m) {
-    if (!(m->flags & 0x10) || m->int_mask) {
+    if (!(m->flags & FLAG_INTERRUPT) || m->int_mask) {
         return;
     } else {
         m->int_mask = true;
@@ -278,6 +280,12 @@ extern inline void machine_instr_decode(machine *m) {
 }
 
 extern inline void machine_instr_execute(machine *m) {
+    // There are cases where the instruction decode step will set the halt flag
+    // and we want execution to stop completely
+    if (m->flags & FLAG_HALT) {
+        return;
+    }
+
     switch (m->instr) {
     case NOP: {
         break;
@@ -285,12 +293,22 @@ extern inline void machine_instr_execute(machine *m) {
     case INC: {
         uint16_t value = machine_get_value(m, m->dst, m->dst_ext) + 1;
         machine_set_value(m, m->dst, m->dst_ext, value);
+
+        if (m->dst < REGISTER_PC || m->dst > REGISTER_CV) {
+            value |= (value & 0x8) << 13;
+        }
+
         SET_ZN(m->flags, value);
         break;
     }
     case DEC: {
         uint16_t value = machine_get_value(m, m->dst, m->dst_ext) - 1;
         machine_set_value(m, m->dst, m->dst_ext, value);
+
+        if (m->dst < REGISTER_PC || m->dst > REGISTER_CV) {
+            value |= (value & 0x8) << 13;
+        }
+
         SET_ZN(m->flags, value);
         break;
     }
@@ -311,18 +329,40 @@ extern inline void machine_instr_execute(machine *m) {
     }
     case RLC: {
         uint16_t value = machine_get_value(m, m->dst, m->dst_ext);
-        uint8_t flags = m->flags;
-        m->flags = (value & 0xA000) | (flags & 0xFB);
-        value = (value << 1) | ((flags & 0x4) >> 2);
+        uint8_t carry = m->flags & FLAG_CARRY;
+        uint8_t flags = m->flags & ~FLAG_CARRY;
+        uint16_t mask;
+
+        if (m->dst < REGISTER_PC || m->dst > REGISTER_CV) {
+            m->flags = flags | ((value & 0x8) >> 1);
+            mask = 0x000F;
+        } else {
+            m->flags = flags | ((value & 0x8000) >> 13);
+            mask = 0xFFFF;
+        }
+
+        value = ((value << 1) | (carry >> 2)) & mask;
         machine_set_value(m, m->dst, m->dst_ext, value);
         SET_ZN(m->flags, value);
         break;
     }
     case RRC: {
         uint16_t value = machine_get_value(m, m->dst, m->dst_ext);
-        uint8_t flags = m->flags;
-        m->flags = (value & 0x1) | (flags & 0xFB);
-        value = (value >> 1) | ((flags & 0x4) << 13);
+        uint16_t carry = m->flags & FLAG_CARRY;
+        uint8_t flags = m->flags & ~FLAG_CARRY;
+        uint16_t mask;
+
+        m->flags = flags | ((value & 0x1) << 2);
+
+        if (m->dst < REGISTER_PC || m->dst > REGISTER_CV) {
+            mask = 0x000F;
+            carry = carry << 1;
+        } else {
+            mask = 0xFFFF;
+            carry <<= 13;
+        }
+
+        value = ((value >> 1) | carry) & mask;
         machine_set_value(m, m->dst, m->dst_ext, value);
         SET_ZN(m->flags, value);
         break;
@@ -389,25 +429,40 @@ extern inline void machine_instr_execute(machine *m) {
     }
     case PSH: {
         // TODO: Push 4 values if the source is 16 bit?
-        *(m->sp)++ = machine_get_value(m, m->src, m->src_ext) & 0xF;
+        uint16_t value = machine_get_value(m, m->src, m->src_ext);
+
+        if (m->src < REGISTER_PC || m->src > REGISTER_TA) {
+            *(m->sp)++ = value & 0xF;
+        } else {
+            *(m->sp)++ = (value >> 12) & 0xF;
+            *(m->sp)++ = (value >> 8) & 0xF;
+            *(m->sp)++ = (value >> 4) & 0xF;
+            *(m->sp)++ = (value >> 0) & 0xF;
+        }
+
         break;
     }
     case POP: {
-        uint16_t value = *(m->sp)-- & 0xF;
-        // TODO: Pop 4 values if the destination is 16 bit?
-        if (m->dst >= REGISTER_PC) {
-            if (m->int_mask && ~m->flags & 0x10) {
-                // The interrupt mask has been cleared by software
-                // so we can unmask the interrupt
-                m->int_mask = false;
-            }
-            // Moving a 4-bit value into a 16-bit register.
-            // Combine the masked src and dst values
-            uint16_t dst = machine_get_value(m, m->dst, m->dst_ext);
-            machine_set_value(m, m->dst, m->dst_ext, (dst & 0xFFF0) | value);
+        uint16_t value;
+
+        if (m->dst < REGISTER_PC || m->dst > REGISTER_CV) {
+            value = *--(m->sp);
         } else {
-            machine_set_value(m, m->dst, m->dst_ext, value);
+            value = *--(m->sp);
+            value |= *--(m->sp) << 4;
+            value |= *--(m->sp) << 8;
+            value |= *--(m->sp) << 12;
         }
+
+        machine_set_value(m, m->dst, m->dst_ext, value);
+
+        if (m->dst == REGISTER_PC && m->int_mask &&
+            ~m->flags & FLAG_INTERRUPT) {
+            // The interrupt mask has been cleared by software
+            // so we can unmask the interrupt
+            m->int_mask = false;
+        }
+
         break;
     }
     case JMP: {

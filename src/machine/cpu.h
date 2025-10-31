@@ -19,7 +19,7 @@ typedef enum {
     REGISTER_E,  // General purpose register E
     REGISTER_F,  // General purpose register F
     REGISTER_S0, // Status register 0 (O, C, Z, N)
-    REGISTER_S1, // Status register 1 (1, 0, H, I)
+    REGISTER_S1, // Status register 1 (T, F, H, I)
     REGISTER_PC, // Program counter
     REGISTER_SP, // Stack pointer
     REGISTER_IV, // Interrupt vector
@@ -48,6 +48,20 @@ typedef enum {
     JSR, // Jump to subroutine
     MOV  // Move the contents of <src> to <dst>
 } Opcode;
+
+typedef enum {
+    FLAG_NEGATIVE = 1 << 0,
+    FLAG_ZERO = 1 << 1,
+    FLAG_CARRY = 1 << 2,
+    FLAG_OVERFLOW = 1 << 3,
+    FLAG_INTERRUPT = 1 << 4,
+    FLAG_HALT = 1 << 5,
+    FLAG_FALSE = 1 << 6,
+    FLAG_TRUE = 1 << 7,
+} Flag;
+
+#define MASK_REGISTER_S0 0x0F
+#define MASK_REGISTER_S1 0xF0
 
 typedef struct machine {
     // - The machine status indicates whether it is running or halted.

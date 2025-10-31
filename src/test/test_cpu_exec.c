@@ -127,31 +127,59 @@ static MunitResult test_cpu_exec_dec(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
     munit_assert_ptr_equal(m->pc, m->memory->data + 2);
 
     machine_reset(m);
 
-    m->registers[REGISTER_A] = 0xF;
-    munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
+    m->registers[REGISTER_A] = 0x1;
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0x1);
 
     machine_step(m);
 
-    munit_assert_uint8(m->registers[REGISTER_A], ==, 0xE);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
+    // TODO Should flags update on DEC / DEC?
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
     munit_assert_ptr_equal(m->pc, m->memory->data + 2);
 
     machine_reset(m);
 
     uint8_t dec_sp[] = {DEC, REGISTER_SP};
+    m->sp += 0x10;
     memcpy(m->memory->data, dec_sp, 2);
-    munit_assert_ptr_equal(m->sp, m->memory->data);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0x10);
 
     machine_step(m);
 
-    munit_assert_ptr_equal(m->sp, m->memory->data - 1);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xF);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    uint8_t dec_md[] = {DEC, REGISTER_MD, 0x1, 0x0, 0x0, 0x0};
+    memcpy(m->memory->data, dec_md, 6);
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0xF);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    m->ix += 0xF000;
+    uint8_t dec_mx[] = {DEC, REGISTER_MX, 0x0, 0x0, 0x0, 0xF};
+    memcpy(m->memory->data, dec_mx, 6);
+    munit_assert_uint8(m->ix[0x000F], ==, 0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->ix[0x000F], ==, 0xF);
+    munit_assert_uint8(m->memory->data[0xF00F], ==, 0xF);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
 
     return MUNIT_OK;
 }
@@ -542,26 +570,294 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
 static MunitResult test_cpu_exec_rlc(const MunitParameter params[],
                                      void *fixture) {
     machine *m = (machine *)fixture;
-    uint8_t program[] = {NOP};
-    memcpy(m->memory->data, program, 1);
+
+    uint8_t rlc_a[] = {RLC, REGISTER_A};
+    memcpy(m->memory->data, rlc_a, 2);
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
 
     machine_step(m);
 
-    munit_assert_uint8(m->flags, ==, 0x80);
-    munit_assert_ptr_equal(m->pc, m->memory->data + 1);
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    m->flags |= FLAG_CARRY;
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 1);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    m->registers[REGISTER_A] = 0x8;
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0x8);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    uint8_t rlc_sp[] = {RLC, REGISTER_SP};
+    memcpy(m->memory->data, rlc_sp, 2);
+    munit_assert_ptr_equal(m->sp, m->memory->data);
+
+    machine_step(m);
+
+    munit_assert_ptr_equal(m->sp, m->memory->data);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    uint8_t *sp = m->sp;
+    m->sp += 0x8000;
+    munit_assert_ptr_equal(m->sp, sp + 0x8000);
+
+    machine_step(m);
+
+    munit_assert_ptr_equal(m->sp, sp);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    sp = m->sp;
+    m->flags |= FLAG_CARRY;
+    munit_assert_ptr_equal(m->sp, sp + 0x0000);
+
+    machine_step(m);
+
+    munit_assert_ptr_equal(m->sp, sp + 0x0001);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    uint8_t rlc_md[] = {RLC, REGISTER_MD, 0x1, 0x0, 0x0, 0x0};
+    memcpy(m->memory->data, rlc_md, 6);
+    m->memory->data[0x1000] = 0x0;
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    m->memory->data[0x1000] = 0x8;
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x8);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    m->flags |= FLAG_CARRY;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x1);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t rlc_mx[] = {RLC, REGISTER_MX, 0x0, 0x0, 0x0, 0x1};
+    m->ix += 0x0FFF;
+    memcpy(m->memory->data, rlc_mx, 6);
+    m->memory->data[0x1000] = 0x0;
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    m->ix += 0x0FFF;
+    m->memory->data[0x1000] = 0x8;
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x8);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    m->ix += 0x0FFF;
+    m->memory->data[0x1000] = 0;
+    m->flags |= FLAG_CARRY;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x1);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
     return MUNIT_OK;
 }
 
 static MunitResult test_cpu_exec_rrc(const MunitParameter params[],
                                      void *fixture) {
     machine *m = (machine *)fixture;
-    uint8_t program[] = {NOP};
-    memcpy(m->memory->data, program, 1);
+
+    uint8_t rrc_a[] = {RRC, REGISTER_A};
+    memcpy(m->memory->data, rrc_a, 2);
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
 
     machine_step(m);
 
-    munit_assert_uint8(m->flags, ==, 0x80);
-    munit_assert_ptr_equal(m->pc, m->memory->data + 1);
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    m->flags |= FLAG_CARRY;
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 8);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    m->registers[REGISTER_A] = 0x1;
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0x1);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    uint8_t rrc_sp[] = {RRC, REGISTER_SP};
+    memcpy(m->memory->data, rrc_sp, 2);
+    munit_assert_ptr_equal(m->sp, m->memory->data);
+
+    machine_step(m);
+
+    munit_assert_ptr_equal(m->sp, m->memory->data);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    uint8_t *sp = m->sp;
+    m->sp += 0x0001;
+    munit_assert_ptr_equal(m->sp, sp + 0x0001);
+
+    machine_step(m);
+
+    munit_assert_ptr_equal(m->sp, sp);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    sp = m->sp;
+    m->flags |= FLAG_CARRY;
+    munit_assert_ptr_equal(m->sp, sp + 0x0000);
+
+    machine_step(m);
+
+    munit_assert_ptr_equal(m->sp, sp + 0x8000);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    uint8_t rrc_md[] = {RRC, REGISTER_MD, 0x1, 0x0, 0x0, 0x0};
+    memcpy(m->memory->data, rrc_md, 6);
+    m->memory->data[0x1000] = 0x0;
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    m->memory->data[0x1000] = 0x1;
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x1);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    m->flags |= FLAG_CARRY;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x8);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    uint8_t rrc_mx[] = {RRC, REGISTER_MX, 0x0, 0x0, 0x0, 0x1};
+    m->ix += 0x0FFF;
+    memcpy(m->memory->data, rrc_mx, 6);
+    m->memory->data[0x1000] = 0x0;
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    m->ix += 0x0FFF;
+    m->memory->data[0x1000] = 0x1;
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x1);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_CARRY | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
+    machine_reset(m);
+
+    m->ix += 0x0FFF;
+    m->memory->data[0x1000] = 0;
+    m->flags |= FLAG_CARRY;
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x8);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+
     return MUNIT_OK;
 }
 
@@ -1365,26 +1661,343 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
 static MunitResult test_cpu_exec_psh(const MunitParameter params[],
                                      void *fixture) {
     machine *m = (machine *)fixture;
-    uint8_t program[] = {NOP};
-    memcpy(m->memory->data, program, 1);
+
+    uint8_t psh_a[] = {PSH, REGISTER_A};
+    memcpy(m->memory->data, psh_a, 2);
+    m->sp += 0xF000;
+    m->registers[REGISTER_A] = 0xA;
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
 
     machine_step(m);
 
-    munit_assert_uint8(m->flags, ==, 0x80);
-    munit_assert_ptr_equal(m->pc, m->memory->data + 1);
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+
+    machine_reset(m);
+
+    uint8_t psh_pc[] = {PSH, REGISTER_PC};
+    memcpy(m->memory->data, psh_pc, 2);
+    m->sp += 0xF000;
+    uint8_t *sp = m->sp;
+    m->memory->data[0xF000] = 0x0;
+    munit_assert_ptr_equal(m->pc, m->memory->data);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x2);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+    munit_assert_ptr_equal(m->sp, sp + 4);
+
+    machine_reset(m);
+
+    uint8_t psh_ix[] = {PSH, REGISTER_IX};
+    memcpy(m->memory->data, psh_ix, 2);
+    m->sp += 0xF000;
+    m->ix += 0xCAFE;
+    sp = m->sp;
+    m->memory->data[0xF000] = 0x0;
+    m->memory->data[0xF003] = 0x0;
+    munit_assert_ptr_equal(m->pc, m->memory->data);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0xC);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0xF);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0xE);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+    munit_assert_ptr_equal(m->sp, sp + 4);
+
+    machine_reset(m);
+
+    uint8_t psh_cv[] = {PSH, REGISTER_CV, 0x5, 0x6, 0x7, 0x8};
+    memcpy(m->memory->data, psh_cv, 6);
+    m->sp += 0xF000;
+    sp = m->sp;
+    m->memory->data[0xF000] = 0x0;
+    m->memory->data[0xF001] = 0x0;
+    m->memory->data[0xF002] = 0x0;
+    m->memory->data[0xF003] = 0x0;
+    munit_assert_ptr_equal(m->pc, m->memory->data);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x5);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 3);
+    munit_assert_ptr_equal(m->sp, sp + 1);
+
+    machine_reset(m);
+
+    uint8_t psh_md[] = {PSH, REGISTER_MD, 0x1, 0x0, 0x0, 0x0};
+    memcpy(m->memory->data, psh_md, 6);
+    m->sp += 0xF000;
+    sp = m->sp;
+    m->memory->data[0x1000] = 0xA;
+    m->memory->data[0x1001] = 0xB;
+    m->memory->data[0x1002] = 0xC;
+    m->memory->data[0x1003] = 0xD;
+    m->memory->data[0xF000] = 0x0;
+    munit_assert_ptr_equal(m->pc, m->memory->data);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_ptr_equal(m->sp, sp + 1);
+
+    machine_reset(m);
+
+    uint8_t psh_mx[] = {PSH, REGISTER_MX, 0x0, 0x0, 0x0, 0x1};
+    memcpy(m->memory->data, psh_mx, 6);
+    m->ix += 0x0FFF;
+    m->sp += 0xF000;
+    sp = m->sp;
+    m->memory->data[0x1000] = 0xA;
+    m->memory->data[0x1001] = 0xB;
+    m->memory->data[0x1002] = 0xC;
+    m->memory->data[0x1003] = 0xD;
+    m->memory->data[0xF000] = 0x0;
+    munit_assert_ptr_equal(m->pc, m->memory->data);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_ptr_equal(m->sp, sp + 1);
+
     return MUNIT_OK;
 }
 
 static MunitResult test_cpu_exec_pop(const MunitParameter params[],
                                      void *fixture) {
     machine *m = (machine *)fixture;
-    uint8_t program[] = {NOP};
-    memcpy(m->memory->data, program, 1);
+
+    uint8_t pop_a[] = {POP, REGISTER_A};
+    memcpy(m->memory->data, pop_a, 2);
+    m->sp += 0xF001;
+    uint8_t *sp = m->sp;
+    m->memory->data[0xF000] = 0xA;
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
 
     machine_step(m);
 
-    munit_assert_uint8(m->flags, ==, 0x80);
-    munit_assert_ptr_equal(m->pc, m->memory->data + 1);
+    munit_assert_uint8(m->registers[REGISTER_A], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+    munit_assert_ptr_equal(m->sp, sp - 1);
+
+    machine_reset(m);
+
+    uint8_t pop_pc[] = {POP, REGISTER_PC};
+    memcpy(m->memory->data, pop_pc, 2);
+    m->sp += 0xF004;
+    sp = m->sp;
+    m->memory->data[0xF000] = 0x4;
+    m->memory->data[0xF001] = 0x3;
+    m->memory->data[0xF002] = 0x2;
+    m->memory->data[0xF003] = 0x1;
+    munit_assert_ptr_equal(m->pc, m->memory->data);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x4);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x3);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x2);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x1);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x4);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x3);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x2);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x1);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 0x4321);
+    munit_assert_ptr_equal(m->sp, sp - 4);
+
+    machine_reset(m);
+
+    uint8_t pop_ix[] = {POP, REGISTER_IX};
+    memcpy(m->memory->data, pop_ix, 2);
+    m->sp += 0xF004;
+    sp = m->sp;
+    m->memory->data[0xF000] = 0x4;
+    m->memory->data[0xF001] = 0x3;
+    m->memory->data[0xF002] = 0x2;
+    m->memory->data[0xF003] = 0x1;
+    munit_assert_ptr_equal(m->pc, m->memory->data);
+    munit_assert_ptr_equal(m->ix, m->memory->data);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x4);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x3);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x2);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x1);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x4);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x3);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x2);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x1);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+    munit_assert_ptr_equal(m->sp, sp - 4);
+    munit_assert_ptr_equal(m->ix, m->memory->data + 0x4321);
+
+    machine_reset(m);
+
+    uint8_t pop_cv[] = {POP, REGISTER_CV, 0x5, 0x6, 0x7, 0x8};
+    memcpy(m->memory->data, pop_cv, 6);
+    m->sp += 0xF001;
+    sp = m->sp;
+    m->memory->data[0xF000] = 0x0;
+    m->memory->data[0xF001] = 0x0;
+    m->memory->data[0xF002] = 0x0;
+    m->memory->data[0xF003] = 0x0;
+    munit_assert_ptr_equal(m->pc, m->memory->data);
+    munit_assert_ptr_equal(m->sp, m->memory->data + 0xF001);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x0);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x0);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_HALT));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 2);
+    munit_assert_ptr_equal(m->sp, sp);
+    machine_reset(m);
+
+    uint8_t pop_md[] = {POP, REGISTER_MD, 0x1, 0x0, 0x0, 0x0};
+    memcpy(m->memory->data, pop_md, 6);
+    m->sp += 0xF001;
+    sp = m->sp;
+    m->memory->data[0x1000] = 0xA;
+    m->memory->data[0x1001] = 0xB;
+    m->memory->data[0x1002] = 0xC;
+    m->memory->data[0x1003] = 0xD;
+    m->memory->data[0xF000] = 0x4;
+    m->memory->data[0xF001] = 0x3;
+    m->memory->data[0xF002] = 0x2;
+    m->memory->data[0xF003] = 0x1;
+    munit_assert_ptr_equal(m->pc, m->memory->data);
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0x1001], ==, 0xB);
+    munit_assert_uint8(m->memory->data[0x1002], ==, 0xC);
+    munit_assert_uint8(m->memory->data[0x1003], ==, 0xD);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x4);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x3);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x2);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x1);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x4);
+    munit_assert_uint8(m->memory->data[0x1001], ==, 0xB);
+    munit_assert_uint8(m->memory->data[0x1002], ==, 0xC);
+    munit_assert_uint8(m->memory->data[0x1003], ==, 0xD);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x4);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x3);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x2);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x1);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_ptr_equal(m->sp, sp - 1);
+
+    machine_reset(m);
+
+    uint8_t pop_mx[] = {POP, REGISTER_MX, 0x0, 0x0, 0x0, 0x1};
+    memcpy(m->memory->data, pop_mx, 6);
+    m->ix += 0x0FFF;
+    m->sp += 0xF001;
+    sp = m->sp;
+    m->memory->data[0x1000] = 0xA;
+    m->memory->data[0x1001] = 0xB;
+    m->memory->data[0x1002] = 0xC;
+    m->memory->data[0x1003] = 0xD;
+    m->memory->data[0xF000] = 0x4;
+    m->memory->data[0xF001] = 0x3;
+    m->memory->data[0xF002] = 0x2;
+    m->memory->data[0xF003] = 0x1;
+    munit_assert_ptr_equal(m->pc, m->memory->data);
+    munit_assert_ptr_equal(m->ix, m->memory->data + 0x0FFF);
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0xA);
+    munit_assert_uint8(m->memory->data[0x1001], ==, 0xB);
+    munit_assert_uint8(m->memory->data[0x1002], ==, 0xC);
+    munit_assert_uint8(m->memory->data[0x1003], ==, 0xD);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x4);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x3);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x2);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x1);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->memory->data[0x1000], ==, 0x4);
+    munit_assert_uint8(m->memory->data[0x1001], ==, 0xB);
+    munit_assert_uint8(m->memory->data[0x1002], ==, 0xC);
+    munit_assert_uint8(m->memory->data[0x1003], ==, 0xD);
+    munit_assert_uint8(m->memory->data[0xF000], ==, 0x4);
+    munit_assert_uint8(m->memory->data[0xF001], ==, 0x3);
+    munit_assert_uint8(m->memory->data[0xF002], ==, 0x2);
+    munit_assert_uint8(m->memory->data[0xF003], ==, 0x1);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 6);
+    munit_assert_ptr_equal(m->sp, sp - 1);
+
     return MUNIT_OK;
 }
 
@@ -1627,12 +2240,16 @@ static MunitTest machine_cpu_exec_tests[] = {
      test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)"INC executes correctly", test_cpu_exec_inc, test_cpu_exec_setup,
      test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"DEC executes correctly", test_cpu_exec_dec, test_cpu_exec_setup,
+     test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)"ADD executes correctly", test_cpu_exec_add, test_cpu_exec_setup,
      test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)"SUB executes correctly", test_cpu_exec_sub, test_cpu_exec_setup,
      test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
-    // RLC
-    // RRC
+    {(char *)"RLC executes correctly", test_cpu_exec_rlc, test_cpu_exec_setup,
+     test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"RRC executes correctly", test_cpu_exec_rrc, test_cpu_exec_setup,
+     test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)"AND executes correctly", test_cpu_exec_and, test_cpu_exec_setup,
      test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)" OR executes correctly", test_cpu_exec_or, test_cpu_exec_setup,
@@ -1641,8 +2258,10 @@ static MunitTest machine_cpu_exec_tests[] = {
      test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     {(char *)"CMP executes correctly", test_cpu_exec_cmp, test_cpu_exec_setup,
      test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
-    // PSH
-    // POP
+    {(char *)"PSH executes correctly", test_cpu_exec_psh, test_cpu_exec_setup,
+     test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char *)"POP executes correctly", test_cpu_exec_pop, test_cpu_exec_setup,
+     test_cpu_exec_tear_down, MUNIT_TEST_OPTION_NONE, NULL},
     // JMP
     // JSR
     {(char *)"MOV executes correctly", test_cpu_exec_mov, test_cpu_exec_setup,
