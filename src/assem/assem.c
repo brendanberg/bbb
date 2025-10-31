@@ -332,18 +332,13 @@ static inline ParseState parse_opcode(context *ctx, char *token) {
 }
 
 static inline ParseState parse_condition(context *ctx, char *token) {
-    if (token[1] != '=' || (token[2] != '0' && token[2] != '1')) {
-        fprintf(stderr, "error: encountered unrecognized condition '%s'\n",
-                token);
-        return PARSE_ERROR;
-    }
+    uint8_t test = (token[0] == 'N' && token[1] != NULL) ? 0x0 : 0x8;
 
-    uint8_t test = (token[2] == '1') << 3;
-
-    char *bitfield = "NZCOIH01";
+    char *bitfield = "NZCOIHFT";
+    uint8_t index = token[1] != NULL;
 
     for (uint8_t t = 0; t < 8; t++) {
-        if (token[0] == bitfield[t]) {
+        if (token[index] == bitfield[t]) {
             PUSH_NEXT(ctx->data, test | t);
             return PARSE_ADDR;
         }

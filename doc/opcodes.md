@@ -194,9 +194,9 @@ For example, a `JMP` instruction with a condition operand of `1` (binary `0001`)
 This mechanism also allows the `JMP` instruction to perform an unconditional jump, since testing against the constant zero and constant one flags will always produce the same result. Therefore `JMP 15 <addr>` and `JMP 6 <addr>` are both unconditional jumps, while `JMP 14 <addr>` and `JMP 7 <addr>` are both unconditional fall throughs.
 
 > [!NOTE]
-> The **bbb** assembler provides mnemonics for jump conditions that are easier to remember. For example, insetad of having to work out that to jump if carry is set, the condition operand should be `10` (binary `1010`), the programmer may write `C=1`. Likewise, jump if not zero would be written `Z=0`.
+> The **bbb** assembler provides mnemonics for jump conditions that are easier to remember. For example, insetad of having to work out that to jump if carry is set, the condition operand should be `10` (binary `1010`), the programmer may write `C`. Likewise, jump if not zero would be written `NZ`.
 >
-> This also simplifies unconditional jumps and fall throughs, since it's possible to write `0=0`, `0=1`, `1=0`, and `1=1`.
+> This also simplifies unconditional jumps and fall throughs, since it's possible to write `NF`, `F`, `NT`, and `T`.
 
 | Example | Description                                                               |
 | ------- | ------------------------------------------------------------------------- |
