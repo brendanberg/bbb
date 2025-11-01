@@ -753,6 +753,10 @@ static MunitResult test_tokenize_mov(const MunitParameter params[],
         c, "MOV 10 *FACE", 8,
         (uint8_t[]){MOV, REGISTER_CV, REGISTER_MX, 0xA, 0xF, 0xA, 0xC, 0xE});
 
+    assert_assem_equiv(
+        c, "MOV 0xFACE \%ix", 7,
+        (uint8_t[]){MOV, REGISTER_CV, REGISTER_IX, 0xF, 0xA, 0xC, 0xE});
+
     assert_assem_equiv(c, "MOV @ABCD @FE35", 11,
                        (uint8_t[]){MOV, REGISTER_MD, REGISTER_MD, 0xA, 0xB, 0xC,
                                    0xD, 0xF, 0xE, 0x3, 0x5});

@@ -503,7 +503,7 @@ extern inline void machine_instr_execute(machine *m) {
     case MOV: {
         uint16_t value = 0;
 
-        if ((m->src < REGISTER_PC || m->src >= REGISTER_CV) &&
+        if ((m->src < REGISTER_PC || m->src > REGISTER_CV) &&
             m->dst >= REGISTER_PC && m->dst < REGISTER_CV) {
             // Moving a 4-bit value into a 16-bit register.
             // Combine the masked src and dst values

@@ -332,10 +332,10 @@ static inline ParseState parse_opcode(context *ctx, char *token) {
 }
 
 static inline ParseState parse_condition(context *ctx, char *token) {
-    uint8_t test = (token[0] == 'N' && token[1] != NULL) ? 0x0 : 0x8;
+    uint8_t test = (token[0] == 'N' && token[1] != '\0') ? 0x0 : 0x8;
 
     char *bitfield = "NZCOIHFT";
-    uint8_t index = token[1] != NULL;
+    uint8_t index = token[1] != '\0';
 
     for (uint8_t t = 0; t < 8; t++) {
         if (token[index] == bitfield[t]) {

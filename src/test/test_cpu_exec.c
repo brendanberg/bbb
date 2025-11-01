@@ -2943,6 +2943,18 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     machine_reset(m);
 
+    uint8_t mov_cv_ix[] = {MOV, REGISTER_CV, REGISTER_IX, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, mov_cv_ix, 7);
+    munit_assert_ptr_equal(m->ix, m->memory->data);
+
+    machine_step(m);
+
+    munit_assert_ptr_equal(m->ix, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    munit_assert_ptr_equal(m->pc, m->memory->data + 7);
+
+    machine_reset(m);
+
     uint8_t mov_cv_md[] = {MOV, REGISTER_CV, REGISTER_MD, 0x8,
                            0x2, 0x0,         0x0,         0x0};
     m->memory->data[0x2000] = 0x7;
