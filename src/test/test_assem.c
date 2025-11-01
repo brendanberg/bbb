@@ -532,6 +532,10 @@ static MunitResult test_tokenize_cmp(const MunitParameter params[],
         c, "CMP 10 *FACE", 8,
         (uint8_t[]){CMP, REGISTER_CV, REGISTER_MX, 0xA, 0xF, 0xA, 0xC, 0xE});
 
+    assert_assem_equiv(
+        c, "CMP 0xFACE \%ix", 7,
+        (uint8_t[]){CMP, REGISTER_CV, REGISTER_IX, 0xF, 0xA, 0xC, 0xE});
+
     assert_assem_equiv(c, "CMP @ABCD @FE35", 11,
                        (uint8_t[]){CMP, REGISTER_MD, REGISTER_MD, 0xA, 0xB, 0xC,
                                    0xD, 0xF, 0xE, 0x3, 0x5});

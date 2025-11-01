@@ -43,7 +43,7 @@ There are two status registers, S0 and S1. The `S0` register contains flags to d
 
 ### `NOP`
 
-Do nothing for once clock cycle.
+Do nothing for one clock cycle.
 
 - **Operands:** None
 - **Flags:** No change
@@ -53,23 +53,23 @@ Do nothing for once clock cycle.
 Increment the value in the specified register or memory location.
 
 - **Operands:**  
-  `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
-- **Flags:** Updates overflow, zero, and negative flags as appropriate
+  `<dst>` – General purpose register, program counter (PC), stack pointer (SP), interrupt vector (IV), index register (IX), temporary address (TA), or memory location (MD or MX)
+- **Flags:** Updates overflow (O), zero (Z), and negative (N) flags as appropriate
 
 ### `DEC <dst>`
 
 Decrement the value in the specified register or memory location.
 
 - **Operands:**  
-  `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
-- **Flags:** Updates overflow, zero, and negative flags as appropriate
+  `<dst>` – General purpose register, PC, SP, IV, IX, TA, MD, or MX
+- **Flags:** Updates O, Z, and N flags as appropriate
 
 ### `RLC <dst>`
 
 Rotate the bits of the value in the specified register or memory location left through the carry status bit.
 
 - **Operands:**  
-  `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
+  `<dst>` – General purpose register, PC, SP, IV, IX, TA, MD, or MX
 - **Flags:** Sets the carry flag to `<dst>`'s most significant bit. Updates overflow, zero, and negative flags as appropriate
 
 ### `RRC <dst>`
@@ -77,7 +77,7 @@ Rotate the bits of the value in the specified register or memory location left t
 Rotate the bits of the value in the specified register or memory location right through the carry status bit.
 
 - **Operands:**  
-  `<dst>` – General purpose register, program counter, stack pointer, interrupt vector, index register, temporary address, or memory location
+  `<dst>` – General purpose register, PC, SP, IV, IX, TA, MD, or MX
 - **Flags:** Sets the carry flag to `<dst>`'s least significant bit. Updates overflow, zero, and negative flags as appropriate
 
 ### `PSH <src>`
@@ -93,16 +93,7 @@ Place the value in the specified register or memory location into the memory loc
 Place the value in the memory location referenced by the stack pointer register into the specified destination register or memory location.
 
 - **Operands:**  
-  `<dst>` – General purpose register, program counter, or memory location
-- **Flags:** No change
-
-### `MOV <src> <dst>`
-
-Read the value in the source register or memory location and place it in the destination register or memory location.
-
-- **Operands:**  
-  `<src>` – General purpose register, program counter, stack pointer, interrupt vector, index reigister, temporary address, constant or memory location  
-  `<dst>` – General purpose register, PC, SP, IV, IX, TA, CV, MD, MX
+  `<dst>` – General purpose register, PC, SP, IV, IX, TA, MD, or MX
 - **Flags:** No change
 
 ### `ADD <src> <dst>`
@@ -113,8 +104,8 @@ Add contents of source and destination registers and store in the destination re
   `<src>` – General purpose register, CV, MD, MX  
   `<dst>` – General purpose register, MD, MX
 - **Flags:**  
-  `O` – Sets overflow if...  
-  `C` – Sets carry flag if ...  
+  `O` – Sets overflow flag if the result has the incorrect sign for signed operands  
+  `C` – Sets carry flag if the sum of the operands' most significant bits is greater than 1
   `Z` – Sets zero flag if the sum is 0  
   `N` – Sets negative flag if the most significant bit is set
 
@@ -218,7 +209,7 @@ This mechanism also allows the `JMP` instruction to perform an unconditional jum
 | `1 111` | Jump if the constant one (1) flag is set (unconditional jump)             |
 
 - **Operands:**  
-  `<cond>` – Four bit jump specifier to indicate branch type  
+  `<cond>` – Four bit condition expression to indicate flag condition to branch on  
   `<addr>` – Sixteen bit literal address
 - **Flags:** No change
 
@@ -229,6 +220,15 @@ Conditionally enter the subroutine at the memory location indicated by the desti
 The jump condition is a 4-bit value that defines which flag to test and the desired flag value. The three least-significant bits indicate which status flag will be used in the condition. The most significant bit is the value to test the flag against.
 
 - **Operands:**  
-  `<cond>` – Four bit jump specifier to indicate branch type  
+  `<cond>` – Four bit condition expression to indicate flag condition to branch on  
   `<addr>` – Sixteen bit literal address
 - **Flags:**  No change
+
+### `MOV <src> <dst>`
+
+Read the value in the source register or memory location and place it in the destination register or memory location.
+
+- **Operands:**  
+  `<src>` – General purpose register, PC, SP, IV, IX, TA, CV, MD, or MX
+  `<dst>` – General purpose register, PC, SP, IV, IX, TA, MD, or MX
+- **Flags:** No change
