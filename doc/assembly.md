@@ -67,7 +67,7 @@ Instructions are machine opcodes, usually followed one or two operands. (The `NO
 ## Operands
 
 ```
-JMP Z=0 .END
+JMP NZ .END
 ```
 
 For most opcodes, the operands specify the source and destination values of the instruction. Registers, constants, and memory locations may be specified as source values, while registers and memory locations may be used as destinations. (It is illegal to assign to a constant.)
