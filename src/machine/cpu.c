@@ -161,10 +161,10 @@ inline void machine_interrupt_check(machine *m) {
         uint16_t dest = m->iv - m->memory->data;
 
         uint16_t pc = m->pc - m->memory->data;
-        *(m->sp)++ = pc & 0xF;
-        *(m->sp)++ = (pc >> 4) & 0xF;
-        *(m->sp)++ = (pc >> 8) & 0xF;
         *(m->sp)++ = (pc >> 12) & 0xF;
+        *(m->sp)++ = (pc >> 8) & 0xF;
+        *(m->sp)++ = (pc >> 4) & 0xF;
+        *(m->sp)++ = pc & 0xF;
         m->pc = m->memory->data + dest;
     }
 }
@@ -504,7 +504,7 @@ extern inline void machine_instr_execute(machine *m) {
         machine_set_value(m, m->dst, m->dst_ext, value);
 
         if (m->dst == REGISTER_PC && m->int_mask &&
-            ~m->flags & FLAG_INTERRUPT) {
+            !(m->flags & FLAG_INTERRUPT)) {
             // The interrupt mask has been cleared by software
             // so we can unmask the interrupt
             m->int_mask = false;

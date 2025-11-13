@@ -3,7 +3,7 @@ BUILD=build
 
 COMPILER=gcc
 OPTIONS=-Wall -g
-# -pedantic -Wall -Wextra -Werror -Wshadow -Wconversion -Wunreachable-code
+# OPTIONS=-pedantic -Wall -Wextra -Werror -Wshadow -Wconversion -Wunreachable-code -g
 COMPILE=$(COMPILER) $(OPTIONS)
 
 COMMON_HEADERS = $(SRC)/machine/cpu.h $(SRC)/machine/io.h $(SRC)/machine/memory.h $(SRC)/machine/sim.h

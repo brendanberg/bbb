@@ -43,12 +43,12 @@ void sim_print(machine *m) {
 
     printf(E385(13m) "│" E385(4m) " ");
 
-    printf(m->flags & 0x20 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-    printf(m->flags & 0x10 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-    printf(m->flags & 0x08 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-    printf(m->flags & 0x04 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-    printf(m->flags & 0x02 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
-    printf(m->flags & 0x01 ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
+    printf(m->flags & FLAG_HALT ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
+    printf(m->flags & FLAG_INTERRUPT ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
+    printf(m->flags & FLAG_OVERFLOW ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
+    printf(m->flags & FLAG_CARRY ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
+    printf(m->flags & FLAG_ZERO ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
+    printf(m->flags & FLAG_NEGATIVE ? E385(5m) "✺" E385(4m) : E385(11m) "◌");
 
     printf(" " E385(13m) "│" E385(5m));
 
@@ -107,13 +107,13 @@ void sim_io(machine *m) {
         return;
     }
 
-    if (keymap != prev_keymap && (m->flags & 0x10) == 0) {
-        m->memory->data[0xFFF0] = keymap & 0x000F;
+    if (!(keymap == prev_keymap || m->flags & FLAG_INTERRUPT || m->int_mask)) {
+        m->memory->data[0xFFF0] = (keymap & 0x000F) >> 0;
         m->memory->data[0xFFF1] = (keymap & 0x00F0) >> 4;
         m->memory->data[0xFFF2] = (keymap & 0x0F00) >> 8;
         m->memory->data[0xFFF3] = (keymap & 0xF000) >> 12;
 
         prev_keymap = keymap;
-        m->flags |= 0x10; // Set interrupt flag
+        m->flags |= FLAG_INTERRUPT;
     }
 }
