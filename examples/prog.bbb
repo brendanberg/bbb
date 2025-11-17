@@ -7,7 +7,7 @@ FIBONACCI:
      MOV %b @F00D
      MOV %c @F00E
      MOV %d @F00F
-     
+
      ADD @F00F %d
      ADD @F00E %c
      ADD @F00D %b

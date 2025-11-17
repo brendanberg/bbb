@@ -550,8 +550,16 @@ extern inline void machine_instr_execute(machine *m) {
     case MOV: {
         uint16_t value = 0;
 
-        if ((m->src < REGISTER_PC || m->src > REGISTER_CV) &&
-            m->dst >= REGISTER_PC && m->dst < REGISTER_CV) {
+        if (m->dst >= REGISTER_PC && m->dst < REGISTER_CV &&
+            m->src > REGISTER_CV) {
+            // Moving data from memory to a 16-bit register...
+            value = machine_get_value(m, m->src, m->src_ext) << 12;
+            value |= machine_get_value(m, m->src, m->src_ext + 1) << 8;
+            value |= machine_get_value(m, m->src, m->src_ext + 2) << 4;
+            value |= machine_get_value(m, m->src, m->src_ext + 3);
+            machine_set_value(m, m->dst, m->dst_ext, value);
+        } else if ((m->src < REGISTER_PC /* || m->src > REGISTER_CV */) &&
+                   m->dst >= REGISTER_PC && m->dst < REGISTER_CV) {
             // Moving a 4-bit value into a 16-bit register.
             // Combine the masked src and dst values
             value = machine_get_value(m, m->src, m->src_ext);

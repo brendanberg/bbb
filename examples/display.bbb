@@ -1,7 +1,7 @@
 (Cycles ones across the 4x4 hex display.                                      )
 
-(I wrote this on an older version of the emulator that had slightly different )
-(behavior. This code works but I don't think it does what I intended it to?   )
+(I wrote this for an older version of the emulator that had slightly different)
+(behavior. This code runs but I don't think it does what I intended it to...  )
 
 #data 0020 1000 00A0
 
@@ -9,7 +9,7 @@
     DEC %c          (set register c to 0xF)
     MOV %c %b       (copy 0xF from c to b)
 START:
-    MOV 0xF000 %ix  
+    MOV 0xF000 %ix
     MOV %b %a
 LOOP:
     MOV %a *0000
