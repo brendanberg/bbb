@@ -67,29 +67,45 @@ void sim_print(machine *m) {
     printf("╠═════════╤═══╧════════╧══════════════════════════════╣ \n");
 
     printf("║ ");
-    printf("%-1X ", m->memory->data[0xF000]);
-    printf("%-1X ", m->memory->data[0xF001]);
-    printf("%-1X ", m->memory->data[0xF002]);
-    printf("%-1X ", m->memory->data[0xF003]);
-    printf("│                                           ║\n");
+    RENDER(m->memory->data[0xF000], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF001], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF002], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF003], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    printf(E385(13m) "│                                           ║\n");
     printf("║ ");
-    printf("%-1X ", m->memory->data[0xF004]);
-    printf("%-1X ", m->memory->data[0xF005]);
-    printf("%-1X ", m->memory->data[0xF006]);
-    printf("%-1X ", m->memory->data[0xF007]);
-    printf("│                                           ║\n");
+    RENDER(m->memory->data[0xF004], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF005], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF006], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF007], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    printf(E385(13m) "│                                           ║\n");
     printf("║ ");
-    printf("%-1X ", m->memory->data[0xF008]);
-    printf("%-1X ", m->memory->data[0xF009]);
-    printf("%-1X ", m->memory->data[0xF00A]);
-    printf("%-1X ", m->memory->data[0xF00B]);
-    printf("│                                           ║\n");
+    RENDER(m->memory->data[0xF008], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF009], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF00A], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF00B], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    printf(E385(13m) "│                                           ║\n");
     printf("║ ");
-    printf("%-1X ", m->memory->data[0xF00C]);
-    printf("%-1X ", m->memory->data[0xF00D]);
-    printf("%-1X ", m->memory->data[0xF00E]);
-    printf("%-1X ", m->memory->data[0xF00F]);
-    printf("│                                           ║ \n");
+    RENDER(m->memory->data[0xF00C], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF00D], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF00E], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    RENDER(m->memory->data[0xF00F], E(1m) E385(5m) "%-1X" E0(35m) " ",
+           E385(11m) "%-1X ");
+    printf(E385(13m) "│                                           ║ \n");
 
     printf("╚═════════╧═══════════════════════════════════════════╝\n");
     printf(E(0m) "\n" E(?25h));

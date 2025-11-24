@@ -512,9 +512,14 @@ static inline bool parse_label(char *token) {
     // result value to the pointer into the label list. If the label is not
     // found, we add the label and return the pointer to the newly added label.
 
+    if (!((token[0] >= 'A' && token[0] <= 'Z') ||
+          (token[0] >= 'a' && token[0] <= 'z'))) {
+        return false;
+    }
+
     for (char *ch = token; *ch != 0; ch++) {
         if (!((*ch >= 'A' && *ch <= 'Z') || (*ch >= 'a' && *ch <= 'z') ||
-              (*ch == '_'))) {
+              (*ch == '_') || (*ch >= '0' && *ch <= '9'))) {
             return false;
         }
     }

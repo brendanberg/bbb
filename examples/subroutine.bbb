@@ -1,0 +1,186 @@
+(Simple function/subroutine implementation with stack semantics)
+
+#data 0020 1000 00A0
+
+#org 0800
+#data 1234              (Operand A)
+#data ABCD              (Operand B)
+#data 0000              (Return Value)
+
+#org 0020
+    ( Prepare the stack for a subroutine call. It is the caller's responsi-   )
+    ( bitlity to push room for the return value and operands onto the stack.  )
+
+    MOV 0x0800 %ix      ( - Index off the location of operands defined above. )
+    MOV *0008 %ta       ( - Use the MOV instr. to dereference the address.    )
+    PSH %ta             ( - Push space for the return value onto the stack.   )
+    MOV *0004 %ta
+    PSH %ta             ( - Push operand B on to the stack                    )
+    MOV *0000 %ta
+    PSH %ta             ( - Push operand A on to the stack                    )
+    
+    JSR T .ADD          ( - Transfer control flow to the ADD subroutine. )
+
+    ( After executiong the JSR instruction, execution continues in ADD with   )
+    ( the stack in the configuration illustrated below:                       )
+    (                                                                         )
+    (  Ret.   B      A      PC                                                )
+    ( ┌──────┬──────┬──────┬──────┐                                           )
+    ( │ 0000 │ ABCD │ 1234 │ **** │                                           )
+    ( └──────┴──────┴──────┴──────┘                                           )
+    (                              ▲                                          )
+    (              Stack Pointer ──┘                                          )
+    
+    ( After execution returns to the main program, the stack is in the fol-   )
+    ( lowing configuration, so we need to discard operands A and B.           )
+    (                                                                         )
+    (  Ret.   B      A                                                        )
+    ( ┌──────┬──────┬──────┐                                                  )
+    ( │ 0000 │ ABCD │ 1234 │                                                  )
+    ( └──────┴──────┴──────┘                                                  )
+    (                       ▲                                                 )
+    (       Stack Pointer ──┘                                                 )
+
+    POP %ta             ( - Pop operand A from the stack to discard           )
+    POP %ta             ( - Pop operand B from the stack to discard           )
+    MOV 15 %f
+LOOOP:
+    PSH %f              ( - Push the display start offset value.              )
+                        ( - The result of the previous subroutine is still on )
+                        (   the stack, so we leave it there to use as the se- )
+                        (   cond argument to the display subroutine. )
+    JSR T .DISPLAY_16
+    POP %a              ( - Pop the starting offset argument from the stack.  )
+    AND 11 %s0          ( - Clear the carry flag so we get clean rollover.    )
+    ADD 4 %f            ( - Move the starting offset to the position follow-  )
+                        (   ing the displayed sixteen bit result.             )
+    PSH 0               ( - Push the value 0 to clear the display character   )
+                        (   following the result.                             )
+    PSH %f              ( - Push the adjusted starting offset onto the stack. )
+    JSR T .DISPLAY_4    ( - Call the DISPLAY_4 subroutine.                    )
+    POP %a              ( - Pop the arguments to DISPLAY_4 to reset the stack )
+    POP %a              (   to the previous state.                            )
+    SUB 4 %f            ( - Move the starting offset back to where it was.    )
+    AND 11 %s0
+    PSH 6               ( - Push the delay factor argument onto the stack.    )
+    JSR T .DELAY        ( - Call the DELAY subroutine.                        )
+    POP %a              ( - Pop the delay factor argument from the stack.     )
+    DEC %f              ( - Decrement the starting offset value.              )
+    
+    JMP T .LOOOP        ( - Repeat ad nauseum.                                )
+
+
+( ADD subroutine: u16, u16 -> u16                                             )
+( Takes two sixteen-bit operands and returns the sum as a sixteen-bit result. )
+
+ADD:
+    PSH %ix             ( - Push the caller's index register on to the stack. )
+    
+    ( At this point in execution, the stack is in this configuration:         )
+    (                                                                         )
+    (  Ret.   B      A      PC     IX                                         )
+    ( ┌──────┬──────┬──────┬──────┬──────┐                                    )
+    ( │ 0000 │ ABCD │ 1234 │ **** │ **** │                                    )
+    ( └──────┴──────┴──────┴──────┴──────┘                                    )
+    (                                     ▲                                   )
+    (                     Stack Pointer ──┘                                   )
+    (                                                                         )
+    ( Since we pushed the previous frame's IX on to the stac, we can move     )
+    ( the current value of the stack pointer to the index register to address )
+    ( the subroutine arguments and return value relative to the  )
+
+    MOV %sp %ix         ( - Copy the SP value to IX.                          )
+    MOV 4 %a            ( - Set the initial iteration count.                  )
+    ADD %a %ix          ( - Add the iteration count to the index register so  )
+                        (   we can add words from right to left.              )
+    AND 11 %s0          ( - Clear the carry flag.                             )
+ADD_LOOP:
+    DEC %ix             ( - Decrement the index register                      )
+    DEC %a              ( - Decrement the iterator                            )
+    MOV *FFF4 %b        ( - Copy a digit from operand A to the A register.    )
+    ADD *FFF0 %b        ( - Add a digit from operand B to the A register.     )
+    MOV %b *FFEC        ( - Copy the result to the return value.              )
+    CMP 0 %a
+    JMP NZ .ADD_LOOP    ( - Loop if the iterator is not 0.                    )
+    POP %ix             ( - Pop the caller's IX value from the stack          )
+    POP %pc             ( - Return control flow to the caller                 )
+
+
+( DISPLAY_4 subroutine: u4, u4 -> void                                        )
+( Takes a four bit value and a four bit target offset and displays the four   )
+( bit value to the 4x4 display.                                               )
+
+DISPLAY_4:
+    PSH %ix             ( - Push the caller's index register on to the stack. )
+    MOV %sp %ix         ( - Copy the SP value to IX.                          )
+    MOV *FFF7 %a        ( - Copy the start offset to register A.              )
+    MOV *FFF6 %b
+    MOV 0xF000 %ix      ( - Set the index register to point to the start of   )
+                        (   the display area of memory-mapped I/O.            )
+    AND 11 %s0          ( - Clear the carry flag.                             )
+    ADD %a %ix          ( - Add the start offset to the index register so     )
+                        (   that we can do memory indexed writes to the corr- )
+                        (   ect start position in the display area.           )
+    MOV %b *0000
+    POP %ix             ( - Pop the caller's IX value from the stack          )
+    POP %pc             ( - Return control flow to the caller                 )
+
+
+( DISPLAY_16 subroutine: u16, u4 -> void                                      )
+( Takes a sixteen bit value and a four bit target offset and displays the     )
+( sixteen bit value to the 4x4 display.                                       )
+
+DISPLAY_16:
+    PSH %ix             ( - Push the caller's index register on to the stack. )
+    MOV %sp %ix         ( - Copy the SP value to IX.                          )
+    MOV *FFF7 %a        ( - Copy the start offset to register A.              )
+    MOV *FFF6 %e
+    MOV *FFF5 %d
+    MOV *FFF4 %c
+    MOV *FFF3 %b
+    MOV 0xF000 %ix      ( - Set the index register to point to the start of   )
+                        (   the display area of memory-mapped I/O.            )
+    ADD %a %ix          ( - Add the start offset to the index register so     )
+                        (   that we can do memory indexed writes to the corr- )
+                        (   ect start position in the display area.           )
+    MOV %b *0000
+    CMP 15 %a
+    JMP NZ .DISPLAY_X
+    SUB 16 %ix
+DISPLAY_X:
+    MOV %c *0001
+    CMP 14 %a
+    JMP NZ .DISPLAY_Y
+    SUB 16 %ix
+DISPLAY_Y:
+    MOV %d *0002
+    CMP 13 %a
+    JMP NZ .DISPLAY_Z
+    SUB 16 %ix
+DISPLAY_Z:
+    MOV %e *0003
+    POP %ix             ( - Pop the caller's IX value from the stack          )
+    POP %pc             ( - Return control flow to the caller                 )
+
+
+( DELAY subroutine: u4 -> void                                                )
+( Takes a four bit delay factor and does nothing in a tight loop for a mul-   )
+( tiple of the base delay time.                                               )
+
+DELAY:
+    PSH %ix
+    MOV %sp %ix
+    MOV *FFF7 %a        ( - Copy the delay factor argument to register A.     )
+DELAY_A:
+    MOV 15 %b
+DELAY_B:
+    MOV 15 %c
+DELAY_C:
+    DEC %c
+    JMP NZ .DELAY_C
+    DEC %b
+    JMP NZ .DELAY_B
+    DEC %a
+    JMP NZ .DELAY_A
+    POP %ix
+    POP %pc

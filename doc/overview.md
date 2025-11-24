@@ -7,9 +7,9 @@ Opcodes                                     Registers
 ├─────┼─────┼─────┼─────┤                   ├─────┼─────┼─────┼─────┤
 │ SUB │ RLC │ RRC │ AND │                   │  E  │  F  │ S0  │ S1  │
 ├─────┼─────┼─────┼─────┤                   ├─────┼─────┼─────┼─────┤
-│ OR  │ XOR │ CMP │ PSH │                   │ TA  │ IX  │ IV  │ SP  │
+│ OR  │ XOR │ CMP │ PSH │                   │ PC  │ SP  │ IV  │ IX  │
 ├─────┼─────┼─────┼─────┤                   ├─────┼─────┴─────┴─────┘
-│ POP │ JMP │ JSR │ MOV │                   │ PC  │ ┌─────┬─────┬─────┐
+│ POP │ JMP │ JSR │ MOV │                   │ TA  │ ┌─────┬─────┬─────┐
 └─────┴─────┴─────┴─────┘                   └─────┘ │ CV  │ MD  │ MX  │
                                                │    └─────┴─────┴─────┘
                                                │             │
@@ -30,12 +30,12 @@ Physical Registers                          Virtual Registers
 │ │    │    │TFHI│OCNZ│ │                     │    |    |    |    │
 │ └────┴────┴────┴────┘ │                   │ └───────────────────┘ │
 │                       │                   │                       │
-│  TA (Temporary Addr.) │                      MX (Memory Indexed)
+│  PC (Program Counter) │                      MX (Memory Indexed)
 │ ┌───────────────────┐ │                   │ ┌───────────────────┐ │
 │ │    |    |    |    │ │                   │ │    |    |    |    │ │
 │ └───────────────────┘ │                     └───────────────────┘
 │                       │                   │                       │
-│  IX (Index)           │                   └─ ─── ─── ─── ─── ─── ─┘
+│  SP (Stack Pointer)   │                   └─ ─── ─── ─── ─── ─── ─┘
 │ ┌───────────────────┐ │
 │ │    |    |    |    │ │                   Virtual registers indicate that the
 │ └───────────────────┘ │                   instruction is extended with addi-
@@ -45,12 +45,12 @@ Physical Registers                          Virtual Registers
 │ │    |    |    |    │ │
 │ └───────────────────┘ │                   The constant value virtual register
 │                       │                   is only valid as the source argu-
-│  SP (Stack Pointer)   │                   ment to an opcode. The number of
+│  IX (Index)           │                   ment to an opcode. The number of
 │ ┌───────────────────┐ │                   words to read is determined by the
 │ │    |    |    |    │ │                   size of the destination register.
 │ └───────────────────┘ │
 │                       │                   The memory direct register indi-
-│  PC (Program Counter) │                   cates that the instruction's exten-
+│  TA (Temporary Addr.) │                   cates that the instruction's exten-
 │ ┌───────────────────┐ │                   ded source or destination value is
 │ │    |    |    |    │ │                   a memory address whose contents
 │ └───────────────────┘ │                   should be read or written.
@@ -82,29 +82,29 @@ S0                  S1
 │ O │ Overflow  │   │ T │ True      │
 └───┴───────────┘   └───┴───────────┘
 
-The memory address registers TA, IX,
-IV, SP, and PC are sixteen bits wide
+The memory address registers PC, SP,
+IV, IX, and TA are sixteen bits wide
 and are not connected to the ALU.
-
-The TA (Temporary Address) register is
-a sixteen bit wide register that can
-hold a memory address.
-
-The IX (Index) register holds the
-memory base address for memory-indexed
-addressing.
-
-The IV (Interrupt Vector) register
-holds the starting memory address of
-the interrupt handling routine.
-
-The SP (Stack Pointer) register holds
-the address of the top of the program's
-call stack.
 
 The PC (Program Counter) register holds
 the memory address of the next value to
 be read from memory in the CPU's fetch,
 decode, and execute cycle.
+
+The SP (Stack Pointer) register holds
+the address of the top of the program's
+call stack.
+
+The IV (Interrupt Vector) register
+holds the starting memory address of
+the interrupt handling routine.
+
+The IX (Index) register holds the
+memory base address for memory-indexed
+addressing.
+
+The TA (Temporary Address) register is
+a sixteen bit wide register that can
+hold a memory address.
 
 ```
