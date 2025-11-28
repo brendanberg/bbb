@@ -1,0 +1,161 @@
+( Calculates the largest sixteen bit number in the Fibonacci sequence and     )
+( halts. The result is built up iteratively by repeatedly alternating between )
+( adding one word to the other until the addition flags a carry.              )
+
+#data 0020 1000 00A0 0000
+
+#org 8000
+#data 0000              ( Operand A )
+#data 0001              ( Operand B )
+
+#org 0020
+    XOR %f %f           ( - Ensure that register F is cleared.                )
+    MOV 0x8000 %ix      ( - Put the memory location of the operands in the IX )
+    MOV *0004 %ta       (   register, move the second operand to the TA       )
+    PSH %ta             (   register and push it onto the stack.              )
+    PSH %f              ( - Put the zero value from register F on the stack.  )
+    JSR T .DISPLAY_16   ( - Call the display subroutine.                      )
+    POP %f              ( - Pop the position offset argument from the stack.  )
+    MOV *0000 %ta       ( - Move the first operand to the TA register.        )
+    PSH %ta
+    PSH %f
+    JSR T .DISPLAY_16   ( - Call the display subroutine.                      )
+    POP %f
+MAIN_LOOP:              ( - The strategy here is to add the two arguments and )
+                        (   alternate between replacing the first or second   )
+                        (   operand with the result so the two most recent    )
+                        (   sums are always in memory, just in swapped orders )
+    JSR T .ADD_A        ( - Unconditional jump to the subroutine that re-     )
+                        (   places operand A with the newest result.          )
+    JMP C .MAIN_BREAK   ( - If the sum's most significant digit resulted in   )
+                        (   the carry flag being set--if the result overflows )
+                        (   sixteen bits--break out of the loop and halt.     )
+    PSH %f              ( - Push the display offset argument onto the stack.  )
+    JSR T .DISPLAY_16   ( - Copy operand A to the top row of the 4x4 display. )
+    POP %f
+    JSR T .ADD_B        ( - Unconditional jump to the subroutine that re-     )
+                        (   places operand B with the newest result.          )
+    JMP C .MAIN_BREAK   ( - Break out of the loop if we're done.              )
+    POP %ta             ( - Pop operand A from the stack and place it in TA.  )
+    PSH %f
+    JSR T .DISPLAY_16   ( - Copy operand B to the top row of the 4x4 display. )
+    POP %f
+    PSH %ta             ( - Replace operand A back on the stack.              )
+    JMP T .MAIN_LOOP    ( - Unconditional jump to top of main loop.           )
+MAIN_BREAK:
+    OR 2 %s1            ( - Fin.                                              )
+
+
+( ADD_A subroutine: i16, i16 -> void                                          )
+( Takes two sixteen-bit operands and returns the sum as a sixteen-bit result. )
+
+ADD_A:
+    PSH %ix             ( - Push the caller's index register on to the stack. )
+    
+    ( At this point in execution, the stack is in this configuration:         )
+    (                                                                         )
+    (  B      A      PC     IX                                                )
+    ( ┌──────┬──────┬──────┬──────┐                                           )
+    ( │ ABCD │ 1234 │ **** │ **** │                                           )
+    ( └──────┴──────┴──────┴──────┘                                           )
+    (                              ▲                                          )
+    (              Stack Pointer ──┘                                          )
+    (                                                                         )
+    ( Since we pushed the previous frame's IX on to the stac, we can move     )
+    ( the current value of the stack pointer to the index register to address )
+    ( the subroutine arguments and return value relative to the  )
+
+    MOV %sp %ix         ( - Copy the SP value to IX.                          )
+    MOV 4 %a            ( - Set the initial iteration count.                  )
+    ADD %a %ix          ( - Add the iteration count to the index register so  )
+                        (   we can add words from right to left.              )
+    AND 11 %s0          ( - Clear the carry flag.                             )
+ADD_A_LOOP:
+    DEC %ix             ( - Decrement the index register                      )
+    DEC %a              ( - Decrement the iterator                            )
+    MOV *FFF4 %b        ( - Copy a digit from operand A to the B register.    )
+    ADD *FFF0 %b        ( - Add a digit from operand B to the B register.     )
+    MOV %b *FFF4        ( - Replace the digit in operand A with the result.   )
+    CMP 0 %a
+    JMP NZ .ADD_A_LOOP  ( - Loop if the iterator is not 0.                    )
+    POP %ix             ( - Pop the caller's IX value from the stack          )
+    POP %pc             ( - Return control flow to the caller                 )
+
+
+ADD_B:
+    PSH %ix             ( - Push the caller's index register on to the stack. )
+    MOV %sp %ix         ( - Copy the SP value to IX.                          )
+    MOV 4 %a            ( - Set the initial iteration count.                  )
+    ADD %a %ix          ( - Add the iteration count to the index register so  )
+                        (   we can add words from right to left.              )
+    AND 11 %s0          ( - Clear the carry flag.                             )
+ADD_B_LOOP:
+    DEC %ix             ( - Decrement the index register                      )
+    DEC %a              ( - Decrement the iterator                            )
+    MOV *FFF4 %b        ( - Copy a digit from operand A to the B register.    )
+    ADD *FFF0 %b        ( - Add a digit from operand B to the B register.     )
+    MOV %b *FFF0        ( - Replace the digit in operand B with the result.   )
+    CMP 0 %a
+    JMP NZ .ADD_B_LOOP  ( - Loop if the iterator is not 0.                    )
+    POP %ix             ( - Pop the caller's IX value from the stack          )
+    POP %pc             ( - Return control flow to the caller                 )
+
+
+( DISPLAY_16 subroutine: u16, u4 -> void                                      )
+( Takes a sixteen bit value and a four bit target offset and displays the     )
+( sixteen bit value to the 4x4 display.                                       )
+
+DISPLAY_16:
+    PSH %ix             ( - Push the caller's index register on to the stack. )
+    MOV %sp %ix         ( - Copy the SP value to IX.                          )
+    MOV *FFF7 %a        ( - Copy the start offset to register A.              )
+    MOV *FFF6 %e
+    MOV *FFF5 %d
+    MOV *FFF4 %c
+    MOV *FFF3 %b
+    MOV 0xF000 %ix      ( - Set the index register to point to the start of   )
+                        (   the display area of memory-mapped I/O.            )
+    ADD %a %ix          ( - Add the start offset to the index register so     )
+                        (   that we can do memory indexed writes to the corr- )
+                        (   ect start position in the display area.           )
+    MOV %b *0000
+    CMP 15 %a           ( - Is the cursor at the end of the display?          )
+    JMP NZ .DISPLAY_X   ( - If not, continue as usual.                        )
+    SUB 16 %ix          ( - Move the cursor to the start of the display.      )
+DISPLAY_X:
+    MOV %c *0001
+    CMP 14 %a           ( - Is the cursor at the end of the display?          )
+    JMP NZ .DISPLAY_Y   ( - If not, continue as usual.                        )
+    SUB 16 %ix          ( - Move the cursor to the start of the display.      )
+DISPLAY_Y:
+    MOV %d *0002
+    CMP 13 %a           ( - Is the cursor at the end of the display?          )
+    JMP NZ .DISPLAY_Z   ( - If not, continue as usual.                        )
+    SUB 16 %ix          ( - Move the cursor to the start of the display.      )
+DISPLAY_Z:
+    MOV %e *0003
+    POP %ix             ( - Pop the caller's IX value from the stack          )
+    POP %pc             ( - Return control flow to the caller                 )
+
+
+( DELAY subroutine: u4 -> void                                                )
+( Takes a four bit delay factor and does nothing in a tight loop for a mul-   )
+( tiple of the base delay time.                                               )
+
+DELAY:
+    PSH %ix
+    MOV %sp %ix
+    MOV *FFF7 %a        ( - Copy the delay factor argument to register A.     )
+DELAY_A:
+    MOV 15 %b
+DELAY_B:
+    MOV 15 %c
+DELAY_C:
+    DEC %c
+    JMP NZ .DELAY_C
+    DEC %b
+    JMP NZ .DELAY_B
+    DEC %a
+    JMP NZ .DELAY_A
+    POP %ix
+    POP %pc

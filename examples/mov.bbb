@@ -1,0 +1,19 @@
+(Moves values around between registers and memory.                            )
+
+(Upon completion, A and F registers should contain the value 0xA, and the 4x4 )
+(display should have 0xF in the top left and right corners, and 0x5 in the    )
+(bottom left and right corners.                                               )
+
+#data 0020 1000 00A0
+
+#org 0020
+    MOV 0xA %a       (Move constant to register)
+    MOV %a %f        (Move register to register)
+    MOV 5 @F00F      (Move constant to direct memory address)
+    MOV 5 *F00C      (Move constant to indexed memory address)
+
+    MOV 0xF000 %ix   (Move constant to index register)
+    MOV 15 *0000     (Move constant to indexed memory address)
+    MOV 15 *0003     (Move constant to indexed memory address)
+
+    OR 2 %s1         (Halt)

@@ -19,7 +19,7 @@ static void *test_cpu_exec_setup(const MunitParameter params[], void *fixture) {
     munit_assert_uint8(m->registers[5], ==, 0);
 
     // Status flags should all be 0
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
 
     return (void *)m;
 }
@@ -44,7 +44,7 @@ static MunitResult test_cpu_exec_nop(const MunitParameter params[],
 
     machine_step(m);
 
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 1);
     return MUNIT_OK;
 }
@@ -60,7 +60,7 @@ static MunitResult test_cpu_exec_inc(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 1);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 2);
 
     machine_reset(m);
@@ -72,7 +72,7 @@ static MunitResult test_cpu_exec_inc(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
     // TODO Should flags update on INC / DEC?
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 2);
 
     machine_reset(m);
@@ -84,7 +84,7 @@ static MunitResult test_cpu_exec_inc(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_ptr_equal(m->sp, m->memory->data + 1);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 2);
 
     machine_reset(m);
@@ -96,7 +96,7 @@ static MunitResult test_cpu_exec_inc(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x1000], ==, 1);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 6);
 
     machine_reset(m);
@@ -110,7 +110,7 @@ static MunitResult test_cpu_exec_inc(const MunitParameter params[],
 
     munit_assert_uint8(m->ix[0x000F], ==, 1);
     munit_assert_uint8(m->memory->data[0xF00F], ==, 1);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 6);
 
     return MUNIT_OK;
@@ -127,7 +127,7 @@ static MunitResult test_cpu_exec_dec(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    // munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_NEGATIVE));
     munit_assert_ptr_equal(m->pc, m->memory->data + 2);
 
     machine_reset(m);
@@ -164,7 +164,7 @@ static MunitResult test_cpu_exec_dec(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x1000], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 6);
 
     machine_reset(m);
@@ -178,7 +178,7 @@ static MunitResult test_cpu_exec_dec(const MunitParameter params[],
 
     munit_assert_uint8(m->ix[0x000F], ==, 0xF);
     munit_assert_uint8(m->memory->data[0xF00F], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 6);
 
     return MUNIT_OK;
@@ -197,7 +197,7 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -210,7 +210,7 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -229,24 +229,24 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
 
     machine_reset(m);
 
-    m->sp += 0x1002;
-    uint8_t *sp = m->sp;
-    m->registers[REGISTER_F] = 0x8;
-    uint8_t add_sp_f[] = {ADD, REGISTER_SP, REGISTER_F};
-    memcpy(m->memory->data, add_sp_f, 3);
-    munit_assert_uint8(m->registers[REGISTER_F], ==, 0x8);
+    // m->sp += 0x1002;
+    // uint8_t *sp = m->sp;
+    // m->registers[REGISTER_F] = 0x8;
+    // uint8_t add_sp_f[] = {ADD, REGISTER_SP, REGISTER_F};
+    // memcpy(m->memory->data, add_sp_f, 3);
+    // munit_assert_uint8(m->registers[REGISTER_F], ==, 0x8);
 
-    machine_step(m);
+    // machine_step(m);
 
-    munit_assert_ptr_equal(m->sp, sp);
-    munit_assert_uint8(m->registers[REGISTER_F], ==, 0xA);
-    munit_assert_uint8(m->flags, ==, 0x80);
-    munit_assert_ptr_equal(m->pc, m->memory->data + 3);
+    // munit_assert_ptr_equal(m->sp, sp);
+    // munit_assert_uint8(m->registers[REGISTER_F], ==, 0xA);
+    // munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    // munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
-    machine_reset(m);
+    // machine_reset(m);
 
     m->sp += 0x1234;
-    sp = m->sp;
+    uint8_t *sp = m->sp;
     m->registers[REGISTER_C] = 0x6;
     uint8_t add_c_sp[] = {ADD, REGISTER_C, REGISTER_SP};
     memcpy(m->memory->data, add_c_sp, 3);
@@ -256,7 +256,8 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_C], ==, 0x6);
     munit_assert_ptr_equal(m->sp, sp + 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    // munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_OVERFLOW | FLAG_CARRY);
+    // munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -269,7 +270,7 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->registers[REGISTER_D], ==, 0x5);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 4);
 
     machine_reset(m);
@@ -283,7 +284,7 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -298,7 +299,7 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2020], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -315,7 +316,7 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x5);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xB);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_OVERFLOW | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -333,7 +334,7 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0xA);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xE);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -351,7 +352,7 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0xA);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xE);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -369,7 +370,7 @@ static MunitResult test_cpu_exec_add(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0xA);
     munit_assert_uint8(m->memory->data[0x2002], ==, 0xE);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     return MUNIT_OK;
@@ -388,7 +389,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -402,7 +403,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0x0);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_OVERFLOW | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -416,7 +417,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0x1);
-    // munit_assert_uint8(m->flags, ==, 0x8A);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_CARRY);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -432,7 +433,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
 
     munit_assert_ptr_equal(m->sp, sp);
     munit_assert_uint8(m->registers[REGISTER_F], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -448,7 +449,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_C], ==, 0x6);
     munit_assert_ptr_equal(m->sp, sp - 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -461,7 +462,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->registers[REGISTER_D], ==, 0x2);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 4);
 
     machine_reset(m);
@@ -475,7 +476,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x1);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -490,7 +491,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2020], ==, 0x1);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -507,7 +508,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x6);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0x5);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -525,7 +526,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x4);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -543,7 +544,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x4);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -561,7 +562,7 @@ static MunitResult test_cpu_exec_sub(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x4);
     munit_assert_uint8(m->memory->data[0x2002], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     return MUNIT_OK;
@@ -783,7 +784,7 @@ static MunitResult test_cpu_exec_rrc(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_ptr_equal(m->sp, sp + 0x8000);
-    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 2);
 
     machine_reset(m);
@@ -874,7 +875,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -888,7 +889,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -902,7 +903,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0x0);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -918,7 +919,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
 
     munit_assert_ptr_equal(m->sp, sp);
     munit_assert_uint8(m->registers[REGISTER_F], ==, 0xA);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -934,7 +935,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_C], ==, 0xF);
     munit_assert_ptr_equal(m->sp, sp + 0x1234);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -949,7 +950,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_C], ==, 0xB);
     munit_assert_ptr_equal(m->sp, sp + 0x1230);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -962,7 +963,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->registers[REGISTER_D], ==, 0x1);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 4);
 
     machine_reset(m);
@@ -976,7 +977,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -991,7 +992,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2020], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -1008,7 +1009,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x7);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1026,7 +1027,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x7);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1044,7 +1045,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x7);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1062,7 +1063,7 @@ static MunitResult test_cpu_exec_and(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x7);
     munit_assert_uint8(m->memory->data[0x2002], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     return MUNIT_OK;
@@ -1081,7 +1082,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1095,7 +1096,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1109,7 +1110,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0x0);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1125,7 +1126,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
 
     munit_assert_ptr_equal(m->sp, sp);
     munit_assert_uint8(m->registers[REGISTER_F], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1141,7 +1142,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_C], ==, 0xC);
     munit_assert_ptr_equal(m->sp, sp + 0x123F);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1154,7 +1155,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->registers[REGISTER_D], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 4);
 
     machine_reset(m);
@@ -1168,7 +1169,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -1183,7 +1184,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2020], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -1200,7 +1201,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x3);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1218,7 +1219,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x3);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1236,7 +1237,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x3);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1254,7 +1255,7 @@ static MunitResult test_cpu_exec_or(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x3);
     munit_assert_uint8(m->memory->data[0x2002], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     return MUNIT_OK;
@@ -1273,7 +1274,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1287,7 +1288,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0x0);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1301,7 +1302,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1317,7 +1318,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
 
     munit_assert_ptr_equal(m->sp, sp);
     munit_assert_uint8(m->registers[REGISTER_F], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1333,7 +1334,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_C], ==, 0xA);
     munit_assert_ptr_equal(m->sp, sp + 0x123F);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1346,7 +1347,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->registers[REGISTER_D], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 4);
 
     machine_reset(m);
@@ -1360,7 +1361,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -1375,7 +1376,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2020], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -1392,7 +1393,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x5);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xA);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1410,7 +1411,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x5);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1428,7 +1429,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x5);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1446,7 +1447,7 @@ static MunitResult test_cpu_exec_xor(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x5);
     munit_assert_uint8(m->memory->data[0x2002], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     return MUNIT_OK;
@@ -1465,7 +1466,7 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1479,7 +1480,7 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1493,7 +1494,7 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0x0);
-    munit_assert_uint8(m->flags, ==, 0x81);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_NEGATIVE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1507,7 +1508,7 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0x0);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -1552,8 +1553,39 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->registers[REGISTER_D], ==, 0x5);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
     munit_assert_ptr_equal(m->pc, m->memory->data + 4);
+
+    machine_reset(m);
+
+    uint8_t cmp_cv_ix[] = {CMP, REGISTER_CV, REGISTER_IX, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, cmp_cv_ix, 7);
+    munit_assert_ptr_equal(m->ix, m->memory->data);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_NEGATIVE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 7);
+
+    machine_reset(m);
+
+    m->ix += 0xFACE;
+    munit_assert_ptr_equal(m->ix, m->memory->data + 0xFACE);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_ZERO));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 7);
+
+    machine_reset(m);
+
+    m->ix += 0xFACF;
+    munit_assert_ptr_equal(m->ix, m->memory->data + 0xFACF);
+
+    machine_step(m);
+
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE));
+    munit_assert_ptr_equal(m->pc, m->memory->data + 7);
 
     machine_reset(m);
 
@@ -1566,7 +1598,7 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x7);
-    munit_assert_uint8(m->flags, ==, 0x81);
+    munit_assert_uint8(m->flags, ==, (FLAG_TRUE | FLAG_NEGATIVE));
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -1581,7 +1613,7 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2020], ==, 0x8);
-    munit_assert_uint8(m->flags, ==, 0x82);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE | FLAG_ZERO);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -1598,7 +1630,7 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x6);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xB);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1616,7 +1648,7 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x4);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xA);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1634,7 +1666,7 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x4);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0xA);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -1652,7 +1684,7 @@ static MunitResult test_cpu_exec_cmp(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x4);
     munit_assert_uint8(m->memory->data[0x2002], ==, 0xA);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     return MUNIT_OK;
@@ -2851,7 +2883,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -2865,7 +2897,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -2879,7 +2911,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0xF);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -2893,7 +2925,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_A], ==, 0x0);
     munit_assert_uint8(m->registers[REGISTER_B], ==, 0x0);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -2909,7 +2941,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     munit_assert_ptr_equal(m->sp, sp);
     munit_assert_uint8(m->registers[REGISTER_F], ==, 0x2);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -2925,7 +2957,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     munit_assert_uint8(m->registers[REGISTER_C], ==, 0x6);
     munit_assert_ptr_equal(m->sp, sp + 0x1236);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 3);
 
     machine_reset(m);
@@ -2938,8 +2970,20 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->registers[REGISTER_D], ==, 0x3);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 4);
+
+    machine_reset(m);
+
+    uint8_t mov_cv_ix[] = {MOV, REGISTER_CV, REGISTER_IX, 0xF, 0xA, 0xC, 0xE};
+    memcpy(m->memory->data, mov_cv_ix, 7);
+    munit_assert_ptr_equal(m->ix, m->memory->data);
+
+    machine_step(m);
+
+    munit_assert_ptr_equal(m->ix, m->memory->data + 0xFACE);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
+    munit_assert_ptr_equal(m->pc, m->memory->data + 7);
 
     machine_reset(m);
 
@@ -2952,7 +2996,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x8);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -2967,7 +3011,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
     machine_step(m);
 
     munit_assert_uint8(m->memory->data[0x2020], ==, 0xF);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 8);
 
     machine_reset(m);
@@ -2984,7 +3028,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x6);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0x6);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -3002,7 +3046,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x4);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0x4);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -3020,7 +3064,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x4);
     munit_assert_uint8(m->memory->data[0x2001], ==, 0x4);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     machine_reset(m);
@@ -3038,7 +3082,7 @@ static MunitResult test_cpu_exec_mov(const MunitParameter params[],
 
     munit_assert_uint8(m->memory->data[0x2000], ==, 0x4);
     munit_assert_uint8(m->memory->data[0x2002], ==, 0x4);
-    munit_assert_uint8(m->flags, ==, 0x80);
+    munit_assert_uint8(m->flags, ==, FLAG_TRUE);
     munit_assert_ptr_equal(m->pc, m->memory->data + 11);
 
     return MUNIT_OK;

@@ -332,18 +332,13 @@ static inline ParseState parse_opcode(context *ctx, char *token) {
 }
 
 static inline ParseState parse_condition(context *ctx, char *token) {
-    if (token[1] != '=' || (token[2] != '0' && token[2] != '1')) {
-        fprintf(stderr, "error: encountered unrecognized condition '%s'\n",
-                token);
-        return PARSE_ERROR;
-    }
+    uint8_t test = (token[0] == 'N' && token[1] != '\0') ? 0x0 : 0x8;
 
-    uint8_t test = (token[2] == '1') << 3;
-
-    char *bitfield = "NZCOIH01";
+    char *bitfield = "NZCOIHFT";
+    uint8_t index = token[1] != '\0';
 
     for (uint8_t t = 0; t < 8; t++) {
-        if (token[0] == bitfield[t]) {
+        if (token[index] == bitfield[t]) {
             PUSH_NEXT(ctx->data, test | t);
             return PARSE_ADDR;
         }
@@ -517,9 +512,14 @@ static inline bool parse_label(char *token) {
     // result value to the pointer into the label list. If the label is not
     // found, we add the label and return the pointer to the newly added label.
 
+    if (!((token[0] >= 'A' && token[0] <= 'Z') ||
+          (token[0] >= 'a' && token[0] <= 'z'))) {
+        return false;
+    }
+
     for (char *ch = token; *ch != 0; ch++) {
         if (!((*ch >= 'A' && *ch <= 'Z') || (*ch >= 'a' && *ch <= 'z') ||
-              (*ch == '_'))) {
+              (*ch == '_') || (*ch >= '0' && *ch <= '9'))) {
             return false;
         }
     }

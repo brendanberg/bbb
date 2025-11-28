@@ -7,13 +7,13 @@ FIBONACCI:
      MOV %b @F00D
      MOV %c @F00E
      MOV %d @F00F
-     
+
      ADD @F00F %d
      ADD @F00E %c
      ADD @F00D %b
      ADD @F00C %a
 
-     JMP 0=0 .FIBONACCI
+     JMP NF .FIBONACCI
      OR 2 %s1
 
 
@@ -39,14 +39,14 @@ LOOP:
      MOV @FFF2 %e    (FE4FFF2)
      MOV @FFF3 %f    (FE5FFF3)
      CMP 0 %c        (AD20)
-     JMP Z=0 .END    (D10064)
+     JMP NZ .END    (D10064)
      CMP 0 %d        (AD30)
-     JMP Z=0 .END    (D10064)
+     JMP NZ .END    (D10064)
      CMP 0 %e        (AD40)
-     JMP Z=0 .END    (D10064)
+     JMP NZ .END    (D10064)
      CMP 0 %f        (AD50)
-     JMP Z=0 .END    (D10064)
-     JMP Z=1 .LOOP   (D9001A)
+     JMP NZ .END    (D10064)
+     JMP Z .LOOP   (D9001A)
 END:
      POP %f
      POP %e

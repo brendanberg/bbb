@@ -15,7 +15,7 @@
 #define SET_CMP(x, lhs, rhs)                                                   \
     ((x) = ((x) & 0xFC) | (((lhs) == (rhs)) << 1) | ((lhs) > (rhs)))
 #define SET_ZN(x, val)                                                         \
-    ((x) = ((x) & 0xFC) | ((val) ? 0 : 1) << 1 | ((val) < 0 ? 1 : 0))
+    ((x) = ((x) & 0xFC) | ((val) ? 0 : 1) << 1 | (((val) & 0x8000) >> 15))
 
 // General purpose registers are 4-bit. Special registers are 16-bit
 extern inline void machine_instr_fetch(machine *m);
@@ -161,10 +161,10 @@ inline void machine_interrupt_check(machine *m) {
         uint16_t dest = m->iv - m->memory->data;
 
         uint16_t pc = m->pc - m->memory->data;
-        *(m->sp)++ = pc & 0xF;
-        *(m->sp)++ = (pc >> 4) & 0xF;
-        *(m->sp)++ = (pc >> 8) & 0xF;
         *(m->sp)++ = (pc >> 12) & 0xF;
+        *(m->sp)++ = (pc >> 8) & 0xF;
+        *(m->sp)++ = (pc >> 4) & 0xF;
+        *(m->sp)++ = pc & 0xF;
         m->pc = m->memory->data + dest;
     }
 }
@@ -208,7 +208,7 @@ extern inline void machine_instr_decode(machine *m) {
         switch (m->dst) {
         case REGISTER_CV: {
             // Read-only registers are not valid destinations; HALT.
-            exit(1);
+            // exit(1);
             SET_HALT(m->flags);
             break;
         }
@@ -295,7 +295,7 @@ extern inline void machine_instr_execute(machine *m) {
         machine_set_value(m, m->dst, m->dst_ext, value);
 
         if (m->dst < REGISTER_PC || m->dst > REGISTER_CV) {
-            value |= (value & 0x8) << 13;
+            value |= (value & 0x8) << 12;
         }
 
         SET_ZN(m->flags, value);
@@ -306,7 +306,7 @@ extern inline void machine_instr_execute(machine *m) {
         machine_set_value(m, m->dst, m->dst_ext, value);
 
         if (m->dst < REGISTER_PC || m->dst > REGISTER_CV) {
-            value |= (value & 0x8) << 13;
+            value |= (value & 0x8) << 12;
         }
 
         SET_ZN(m->flags, value);
@@ -314,17 +314,64 @@ extern inline void machine_instr_execute(machine *m) {
     }
     case ADD: {
         // Set overflow and carry based on the target register width
-        uint16_t value = (machine_get_value(m, m->src, m->src_ext) +
-                          machine_get_value(m, m->dst, m->dst_ext));
+        uint16_t lhs = machine_get_value(m, m->src, m->src_ext);
+        uint16_t rhs = machine_get_value(m, m->dst, m->dst_ext);
+        uint16_t value = lhs + rhs + ((m->flags & FLAG_CARRY) >> 2);
+
+        if (m->src >= REGISTER_PC && m->src < REGISTER_CV) {
+            SET_HALT(m->flags);
+            break;
+        }
+
         machine_set_value(m, m->dst, m->dst_ext, value);
+
+        uint8_t flags = 0;
+
+        if ((m->dst < REGISTER_PC || m->dst > REGISTER_CV) &&
+            ((lhs & 0x8) == (rhs & 0x8)) && ((lhs & 0x8) != (value & 0x8))) {
+            flags |= FLAG_OVERFLOW;
+        }
+
+        if (value & 0x10) {
+            flags |= FLAG_CARRY;
+        }
+
+        m->flags = (m->flags & 0xF0) | flags;
+
+        if (m->dst < REGISTER_PC || m->dst > REGISTER_CV) {
+            value |= (value & 0x8) << 12;
+        }
+
         SET_ZN(m->flags, value);
+
         break;
     }
     case SUB: {
-        uint16_t value = machine_get_value(m, m->dst, m->dst_ext) -
-                         machine_get_value(m, m->src, m->src_ext);
+        uint16_t rhs = machine_get_value(m, m->src, m->src_ext);
+        uint16_t lhs = machine_get_value(m, m->dst, m->dst_ext);
+        uint16_t value = lhs - rhs - ((m->flags & FLAG_CARRY) >> 2);
+
         machine_set_value(m, m->dst, m->dst_ext, value);
+
+        uint8_t flags = 0;
+
+        if ((m->dst < REGISTER_PC || m->dst > REGISTER_CV) &&
+            ((lhs & 0x8) == (rhs & 0x8)) && ((lhs & 0x8) != (value & 0x8))) {
+            flags |= FLAG_OVERFLOW;
+        }
+
+        if (value & 0x10) {
+            flags |= FLAG_CARRY;
+        }
+
+        m->flags = (m->flags & 0xF0) | flags;
+
+        if (m->dst < REGISTER_PC || m->dst > REGISTER_CV) {
+            value = (value & 0x7FFF) | (value & 0x8) << 12;
+        }
+
         SET_ZN(m->flags, value);
+
         break;
     }
     case RLC: {
@@ -413,7 +460,7 @@ extern inline void machine_instr_execute(machine *m) {
         break;
     }
     case CMP: {
-        if (((m->src < REGISTER_PC || m->src >= REGISTER_CV) &&
+        if (((m->src < REGISTER_PC || m->src > REGISTER_CV) &&
              m->dst >= REGISTER_PC && m->dst < REGISTER_CV) ||
             (m->src >= REGISTER_PC && m->src < REGISTER_CV &&
              (m->dst < REGISTER_PC || m->dst > REGISTER_CV))) {
@@ -457,7 +504,7 @@ extern inline void machine_instr_execute(machine *m) {
         machine_set_value(m, m->dst, m->dst_ext, value);
 
         if (m->dst == REGISTER_PC && m->int_mask &&
-            ~m->flags & FLAG_INTERRUPT) {
+            !(m->flags & FLAG_INTERRUPT)) {
             // The interrupt mask has been cleared by software
             // so we can unmask the interrupt
             m->int_mask = false;
@@ -503,8 +550,16 @@ extern inline void machine_instr_execute(machine *m) {
     case MOV: {
         uint16_t value = 0;
 
-        if ((m->src < REGISTER_PC || m->src >= REGISTER_CV) &&
-            m->dst >= REGISTER_PC && m->dst < REGISTER_CV) {
+        if (m->dst >= REGISTER_PC && m->dst < REGISTER_CV &&
+            m->src > REGISTER_CV) {
+            // Moving data from memory to a 16-bit register...
+            value = machine_get_value(m, m->src, m->src_ext) << 12;
+            value |= machine_get_value(m, m->src, m->src_ext + 1) << 8;
+            value |= machine_get_value(m, m->src, m->src_ext + 2) << 4;
+            value |= machine_get_value(m, m->src, m->src_ext + 3);
+            machine_set_value(m, m->dst, m->dst_ext, value);
+        } else if ((m->src < REGISTER_PC /* || m->src > REGISTER_CV */) &&
+                   m->dst >= REGISTER_PC && m->dst < REGISTER_CV) {
             // Moving a 4-bit value into a 16-bit register.
             // Combine the masked src and dst values
             value = machine_get_value(m, m->src, m->src_ext);

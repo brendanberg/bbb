@@ -532,6 +532,10 @@ static MunitResult test_tokenize_cmp(const MunitParameter params[],
         c, "CMP 10 *FACE", 8,
         (uint8_t[]){CMP, REGISTER_CV, REGISTER_MX, 0xA, 0xF, 0xA, 0xC, 0xE});
 
+    assert_assem_equiv(
+        c, "CMP 0xFACE \%ix", 7,
+        (uint8_t[]){CMP, REGISTER_CV, REGISTER_IX, 0xF, 0xA, 0xC, 0xE});
+
     assert_assem_equiv(c, "CMP @ABCD @FE35", 11,
                        (uint8_t[]){CMP, REGISTER_MD, REGISTER_MD, 0xA, 0xB, 0xC,
                                    0xD, 0xF, 0xE, 0x3, 0x5});
@@ -591,55 +595,55 @@ static MunitResult test_tokenize_jmp(const MunitParameter params[],
                                      void *fixture) {
     context *c = ((assem_fixture *)fixture)->ctx;
 
-    assert_assem_equiv(c, "JMP N=0 @FEDC", 6,
+    assert_assem_equiv(c, "JMP NN @FEDC", 6,
                        (uint8_t[]){JMP, 0x0, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP N=1 @FEDC", 6,
+    assert_assem_equiv(c, "JMP N @FEDC", 6,
                        (uint8_t[]){JMP, 0x8, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP Z=0 @FEDC", 6,
+    assert_assem_equiv(c, "JMP NZ @FEDC", 6,
                        (uint8_t[]){JMP, 0x1, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP Z=1 @FEDC", 6,
+    assert_assem_equiv(c, "JMP Z @FEDC", 6,
                        (uint8_t[]){JMP, 0x9, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP C=0 @FEDC", 6,
+    assert_assem_equiv(c, "JMP NC @FEDC", 6,
                        (uint8_t[]){JMP, 0x2, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP C=1 @FEDC", 6,
+    assert_assem_equiv(c, "JMP C @FEDC", 6,
                        (uint8_t[]){JMP, 0xA, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP O=0 @FEDC", 6,
+    assert_assem_equiv(c, "JMP NO @FEDC", 6,
                        (uint8_t[]){JMP, 0x3, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP O=1 @FEDC", 6,
+    assert_assem_equiv(c, "JMP O @FEDC", 6,
                        (uint8_t[]){JMP, 0xB, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP I=0 @FEDC", 6,
+    assert_assem_equiv(c, "JMP NI @FEDC", 6,
                        (uint8_t[]){JMP, 0x4, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP I=1 @FEDC", 6,
+    assert_assem_equiv(c, "JMP I @FEDC", 6,
                        (uint8_t[]){JMP, 0xC, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP H=0 @FEDC", 6,
+    assert_assem_equiv(c, "JMP NH @FEDC", 6,
                        (uint8_t[]){JMP, 0x5, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP H=1 @FEDC", 6,
+    assert_assem_equiv(c, "JMP H @FEDC", 6,
                        (uint8_t[]){JMP, 0xD, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP 0=0 @FEDC", 6,
+    assert_assem_equiv(c, "JMP NF @FEDC", 6,
                        (uint8_t[]){JMP, 0x6, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP 0=1 @FEDC", 6,
+    assert_assem_equiv(c, "JMP F @FEDC", 6,
                        (uint8_t[]){JMP, 0xE, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP 1=0 @FEDC", 6,
+    assert_assem_equiv(c, "JMP NT @FEDC", 6,
                        (uint8_t[]){JMP, 0x7, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP 1=1 @FEDC", 6,
+    assert_assem_equiv(c, "JMP T @FEDC", 6,
                        (uint8_t[]){JMP, 0xF, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JMP 1=1 *1234", 6,
+    assert_assem_equiv(c, "JMP T *1234", 6,
                        (uint8_t[]){JMP, 0xF, 0x1, 0x2, 0x3, 0x4});
 
     char *prog = strdup("LOOP:");
@@ -647,7 +651,7 @@ static MunitResult test_tokenize_jmp(const MunitParameter params[],
     munit_assert_true(success);
     free(prog);
 
-    assert_assem_equiv(c, "JMP 1=1 .LOOP", 6,
+    assert_assem_equiv(c, "JMP T .LOOP", 6,
                        (uint8_t[]){JMP, 0xF, 0x0, 0x0, 0x0, 0x0});
 
     return MUNIT_OK;
@@ -657,55 +661,55 @@ static MunitResult test_tokenize_jsr(const MunitParameter params[],
                                      void *fixture) {
     context *c = ((assem_fixture *)fixture)->ctx;
 
-    assert_assem_equiv(c, "JSR N=0 @FEDC", 6,
+    assert_assem_equiv(c, "JSR NN @FEDC", 6,
                        (uint8_t[]){JSR, 0x0, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR N=1 @FEDC", 6,
+    assert_assem_equiv(c, "JSR N @FEDC", 6,
                        (uint8_t[]){JSR, 0x8, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR Z=0 @FEDC", 6,
+    assert_assem_equiv(c, "JSR NZ @FEDC", 6,
                        (uint8_t[]){JSR, 0x1, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR Z=1 @FEDC", 6,
+    assert_assem_equiv(c, "JSR Z @FEDC", 6,
                        (uint8_t[]){JSR, 0x9, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR C=0 @FEDC", 6,
+    assert_assem_equiv(c, "JSR NC @FEDC", 6,
                        (uint8_t[]){JSR, 0x2, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR C=1 @FEDC", 6,
+    assert_assem_equiv(c, "JSR C @FEDC", 6,
                        (uint8_t[]){JSR, 0xA, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR O=0 @FEDC", 6,
+    assert_assem_equiv(c, "JSR NO @FEDC", 6,
                        (uint8_t[]){JSR, 0x3, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR O=1 @FEDC", 6,
+    assert_assem_equiv(c, "JSR O @FEDC", 6,
                        (uint8_t[]){JSR, 0xB, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR I=0 @FEDC", 6,
+    assert_assem_equiv(c, "JSR NI @FEDC", 6,
                        (uint8_t[]){JSR, 0x4, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR I=1 @FEDC", 6,
+    assert_assem_equiv(c, "JSR I @FEDC", 6,
                        (uint8_t[]){JSR, 0xC, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR H=0 @FEDC", 6,
+    assert_assem_equiv(c, "JSR NH @FEDC", 6,
                        (uint8_t[]){JSR, 0x5, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR H=1 @FEDC", 6,
+    assert_assem_equiv(c, "JSR H @FEDC", 6,
                        (uint8_t[]){JSR, 0xD, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR 0=0 @FEDC", 6,
+    assert_assem_equiv(c, "JSR NF @FEDC", 6,
                        (uint8_t[]){JSR, 0x6, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR 0=1 @FEDC", 6,
+    assert_assem_equiv(c, "JSR F @FEDC", 6,
                        (uint8_t[]){JSR, 0xE, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR 1=0 @FEDC", 6,
+    assert_assem_equiv(c, "JSR NT @FEDC", 6,
                        (uint8_t[]){JSR, 0x7, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR 1=1 @FEDC", 6,
+    assert_assem_equiv(c, "JSR T @FEDC", 6,
                        (uint8_t[]){JSR, 0xF, 0xF, 0xE, 0xD, 0xC});
 
-    assert_assem_equiv(c, "JSR 1=1 *1234", 6,
+    assert_assem_equiv(c, "JSR T *1234", 6,
                        (uint8_t[]){JSR, 0xF, 0x1, 0x2, 0x3, 0x4});
 
     char *prog = strdup("LOOP:");
@@ -713,7 +717,7 @@ static MunitResult test_tokenize_jsr(const MunitParameter params[],
     munit_assert_true(success);
     free(prog);
 
-    assert_assem_equiv(c, "JSR 1=1 .LOOP", 6,
+    assert_assem_equiv(c, "JSR T .LOOP", 6,
                        (uint8_t[]){JSR, 0xF, 0x0, 0x0, 0x0, 0x0});
 
     return MUNIT_OK;
@@ -752,6 +756,10 @@ static MunitResult test_tokenize_mov(const MunitParameter params[],
     assert_assem_equiv(
         c, "MOV 10 *FACE", 8,
         (uint8_t[]){MOV, REGISTER_CV, REGISTER_MX, 0xA, 0xF, 0xA, 0xC, 0xE});
+
+    assert_assem_equiv(
+        c, "MOV 0xFACE \%ix", 7,
+        (uint8_t[]){MOV, REGISTER_CV, REGISTER_IX, 0xF, 0xA, 0xC, 0xE});
 
     assert_assem_equiv(c, "MOV @ABCD @FE35", 11,
                        (uint8_t[]){MOV, REGISTER_MD, REGISTER_MD, 0xA, 0xB, 0xC,

@@ -1,0 +1,37 @@
+(Adds two 16-digit numbers and shows the result on the 4x4 display.           )
+
+(This program loads operand A from locations 0x1000 through 0x1003 in memory  )
+(and operand B from locations 0x1004 through 0x1007. It adds the values with  )
+(carry and displays the result in the bottom row of the 4x4 hex display.      )
+
+#data 0020 1000 00A0 0000
+
+#org 1000
+#data 0BAD            (Operand A)
+
+#org 1004
+#data 0CA7            (Operand B)
+
+#org 0020
+ADD:
+    MOV 3 %ix         (We're going to index from the rightmost, or least      )
+                      (  significant position and work our way to the left.   )
+    
+LOOP:
+    MOV *1000 *F000   (Copy a digit from operand A to the display.)
+    MOV *1004 *F004   (Copy a digit from operand B to the display.)
+
+
+    MOV *1000 %a      (Copy a digit from operand A to the A register.)
+    ADD *1004 %a      (Add the value of operand B to the A register; if the   )
+                      (  carry flag was set before the addition, increment    )
+                      (  the result by one. Afterwards, set the carry flag to )
+                      (  reflect whether the result is greater than 15.       )
+
+    MOV %a *F00C      (Copy the result to the display.)
+
+    DEC %ix
+    JMP NN .LOOP      (Loop if the index register is not 0.)
+
+HALT:
+    OR 2 %s1
