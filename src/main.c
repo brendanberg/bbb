@@ -35,11 +35,16 @@ int bbb_assemble(char *source_name, FILE *source, FILE *image) {
     fread(prog, sizeof(char), src_size, source);
     memory *mem = build_image(source_name, prog);
 
-    fwrite(mem->data, mem->size, 1, image);
-    fflush(image);
-    free(prog);
+    if (mem) {
+        fwrite(mem->data, mem->size, 1, image);
+        fflush(image);
+        free(prog);
 
-    return EXIT_SUCCESS;
+        return EXIT_SUCCESS;
+    } else {
+        fprintf(stderr, "error: unable to build image\n");
+        return EXIT_FAILURE;
+    }
 }
 
 int bbb_inspect(char *image_name) {
