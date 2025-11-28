@@ -1,14 +1,14 @@
 # bbb Documentation
 
-### 1. [Instruction Set][instruction_set]
+### [Instruction Set][instruction_set]
 
-### 1. [System Architecture][architecture]
+### [System Architecture][architecture]
 
-### 3. [Assembly Language][assembly]
+### [Assembly Language][assembly]
 
-### 4. Human Interface
+### Human Interface
 
-### 5. Multiprocessing
+### Multiprocessing
 
 [instruction_set]: ./instruction_set.md
 [architecture]: ./architecture.md
