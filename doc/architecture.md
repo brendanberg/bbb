@@ -1,4 +1,4 @@
-# bbb Architecture
+# bbb System Architecture
 
 This document describes the overall organization of the _bbb_ architecture, including bus layout, registers, control signals, state machine, and initialization procedure.
 
@@ -61,3 +61,61 @@ In this further example, the constant value 6 is placed into the memory address 
 ## Initialization procedure
 
 When the _bbb_ CPU first powers on, it loads the first five memory locations starting from 0x0000 into the PC, SP, IR, IX, and TA registers. The CPU then transitions into the `Running` state and begins execution with the fetch, decode, execute pipeline starting at the location loaded into the PC register.
+
+## Memory Layout
+
+**Program Space**
+
+The first 16K quads of memory are read-only memory. Read-only memory is
+bank-switched to allow writing firmware updates to the non-active area. On
+boot, the updated firmware is loaded and if the self-test passes, it is marked
+good. Otherwise, the previous image is loaded and the update is cleared.
+
+Random access memory is mapped to the next 40K quads of memory. This includes
+space for the execution stack, as well as program and heap space.
+
+| Start  | End    | Use                       |
+| ------ | ------ | ------------------------- |
+| `0000` | `3FFF` | Read-only memory          |
+| `4000` | `DFFF` | User random-access memory |
+
+**Compute Fabric Mailboxes**
+
+These memory areas are for communication with other CPUs when networked in a
+4x4 lattice. Operation of these memory areas is discussed in the
+multiprocessing documentation (in progress).
+
+| Start  | End    | Use          |
+| ------ | ------ | ------------ |
+| `E000` | `E1FF` | Inbox North  |
+| `E200` | `E3FF` | Inbox East   |
+| `E400` | `E5FF` | Inbox South  |
+| `E600` | `E7FF` | Inbox West   |
+| `E800` | `E9FF` | Outbox North |
+| `EA00` | `EBFF` | Outbox East  |
+| `EC00` | `EDFF` | Outbox South |
+| `EE00` | `EFFF` | Outbox West  |
+
+**Input / Output**
+
+Input and output hardware is memory mapped to the highest 4K quads of address
+space. This includes space for user expansion, serial communication, a 4x4
+character 8- or 16-segment display (see HID documentation), and a 4x4 button
+matrix.
+
+| Start  | End    | Use                              |
+| ------ | ------ | -------------------------------- |
+| `F000` | `F3FF` | User Expansion A                 |
+| `F400` | `F7FF` | User Expansion B                 |
+| `F800` | `FBFF` | User Expansion C                 |
+| ...    | ...    |                                  |
+| `FF00` | `FF3F` | Serial input buffer (32 octets)  |
+| `FF40` | `FF7F` | Serial output buffer (32 octets) |
+| `FF80` | `FF81` | Serial input start offset        |
+| `FF82` | `FF83` | Serial input end offset          |
+| `FF84` | `FF85` | Serial output start offset       |
+| `FF86` | `FF87` | Serial output end offset         |
+| ...    | ...    |                                  |
+| `FFA0` | `FFCF` | 4x4 display (16 segment mode)    |
+| `FFD0` | `FFEF` | 4x4 display (8 segment mode)     |
+| `FFF0` | `FFF3` | 4x4 keypad input map             |

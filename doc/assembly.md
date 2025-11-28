@@ -1,4 +1,4 @@
-# bbb Assembly
+# bbb Assembly Language
 
 The _bbb_ Assembly Language is a programmer-friendly way to write programs that target the _bbb_ CPU architecture. Structurally, its statements mimic the corresponding machine code quite closely while providing ergonomic features for structuring control flow and memory layout.
 

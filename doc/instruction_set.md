@@ -1,4 +1,4 @@
-# bbb Opcodes
+# bbb Instruction Set
 
 The _bbb_ architecture has 16 opcodes, described in the following table.
 
